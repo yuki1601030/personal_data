@@ -12,6 +12,7 @@ const members = [
     role: "プロジェクトリーダー",
     specialty: "前向きな合意形成と進行設計",
     points: { trust: 42, growth: 34, thanks: 28, collaboration: 38 },
+    previousScore: 130,
     strengthTags: ["巻き込み力", "課題整理", "調整力"],
     growthOpportunities: ["新規企画のリードに挑戦", "若手メンバーのメンターを担当"],
   },
@@ -21,6 +22,7 @@ const members = [
     role: "UXデザイナー",
     specialty: "利用者視点の体験整理",
     points: { trust: 31, growth: 45, thanks: 36, collaboration: 29 },
+    previousScore: 118,
     strengthTags: ["顧客理解", "アイデア創出", "課題整理"],
     growthOpportunities: ["顧客ヒアリングの設計を担当", "他職種メンバーとの協働プロジェクトに参加"],
   },
@@ -30,6 +32,7 @@ const members = [
     role: "エンジニア",
     specialty: "試作を素早く形にする実装力",
     points: { trust: 39, growth: 41, thanks: 26, collaboration: 32 },
+    previousScore: 146,
     strengthTags: ["実行推進", "チーム支援", "課題整理"],
     growthOpportunities: ["データを使った意思決定テーマを担当", "新しい試作テーマの技術検証を担当"],
   },
@@ -39,6 +42,7 @@ const members = [
     role: "ビジネス企画",
     specialty: "アイデアを行動計画へ変える構想力",
     points: { trust: 27, growth: 43, thanks: 33, collaboration: 35 },
+    previousScore: 138,
     strengthTags: ["アイデア創出", "巻き込み力", "調整力"],
     growthOpportunities: ["新規企画のリードに挑戦", "他職種メンバーとの協働プロジェクトに参加"],
   },
@@ -48,6 +52,7 @@ const members = [
     role: "データアナリスト",
     specialty: "数字から次の仮説を見つける分析力",
     points: { trust: 35, growth: 37, thanks: 30, collaboration: 34 },
+    previousScore: 136,
     strengthTags: ["データ分析", "課題整理", "チーム支援"],
     growthOpportunities: ["データを使った意思決定テーマを担当", "顧客ヒアリング結果の分析設計を担当"],
   },
@@ -77,6 +82,7 @@ const timeline = [
   },
 ];
 
+const portfolioList = document.querySelector("#portfolio-list");
 const memberList = document.querySelector("#member-list");
 const recipientSelect = document.querySelector("#recipient");
 const timelineList = document.querySelector("#timeline-list");
@@ -104,6 +110,60 @@ function formatNumber(value) {
   return value.toLocaleString("ja-JP");
 }
 
+function calculateScoreChange(member) {
+  return calculateScore(member) - member.previousScore;
+}
+
+function formatScoreChange(value) {
+  if (value > 0) {
+    return `+${formatNumber(value)}`;
+  }
+
+  if (value < 0) {
+    return `-${formatNumber(Math.abs(value))}`;
+  }
+
+  return "±0";
+}
+
+function getInvestmentStatus(member) {
+  const scoreChange = calculateScoreChange(member);
+
+  if (scoreChange >= 12) {
+    return "急成長";
+  }
+
+  if (member.points.growth >= 42) {
+    return "注目人材";
+  }
+
+  if (member.points.trust >= 40) {
+    return "安定成長";
+  }
+
+  if (member.points.thanks >= 34) {
+    return "支援期待";
+  }
+
+  return "専門性強化中";
+}
+
+function getScoreChangeClass(value) {
+  if (value > 0) {
+    return "is-up";
+  }
+
+  if (value < 0) {
+    return "is-down";
+  }
+
+  return "is-flat";
+}
+
+function getRankedMembers() {
+  return [...members].sort((first, second) => calculateScore(second) - calculateScore(first));
+}
+
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (character) => {
     const entities = {
@@ -129,6 +189,50 @@ function renderStats() {
 function renderMemberOptions() {
   recipientSelect.innerHTML = members
     .map((member) => `<option value="${member.id}">${member.name} / ${member.role}</option>`)
+    .join("");
+}
+
+function renderPortfolio() {
+  const rankedMembers = getRankedMembers();
+  const maxScore = Math.max(...rankedMembers.map(calculateScore));
+
+  portfolioList.innerHTML = rankedMembers
+    .map((member, index) => {
+      const score = calculateScore(member);
+      const scoreChange = calculateScoreChange(member);
+      const barRate = Math.max(8, Math.round((score / maxScore) * 100));
+      const changeClass = getScoreChangeClass(scoreChange);
+      const status = getInvestmentStatus(member);
+
+      return `
+        <article class="portfolio-card">
+          <div class="portfolio-rank" aria-label="順位 ${index + 1}位">${index + 1}</div>
+          <div class="portfolio-member">
+            <h3>${escapeHtml(member.name)}</h3>
+            <p>${escapeHtml(member.role)}</p>
+          </div>
+          <div class="portfolio-score">
+            <span>人財スコア</span>
+            <strong>${formatNumber(score)}</strong>
+          </div>
+          <div class="portfolio-growth">
+            <span>成長期待ポイント</span>
+            <strong>${formatNumber(member.points.growth)}</strong>
+          </div>
+          <div class="portfolio-change ${changeClass}">
+            <span>前回比（成長変化）</span>
+            <strong>${formatScoreChange(scoreChange)}</strong>
+          </div>
+          <div class="portfolio-status">
+            <span>成長投資ステータス</span>
+            <strong>${escapeHtml(status)}</strong>
+          </div>
+          <div class="portfolio-bar" aria-label="${escapeHtml(member.name)}さんの人財スコア横棒グラフ ${barRate}%">
+            <span style="width: ${barRate}%"></span>
+          </div>
+        </article>
+      `;
+    })
     .join("");
 }
 
@@ -299,7 +403,7 @@ function renderTimeline() {
         <article class="timeline-item">
           <div class="timeline-icon" aria-hidden="true">＋</div>
           <div>
-            <p class="timeline-title">${recipientName} さんへ ${pointName} を ${formatNumber(item.points)}pt 投資</p>
+            <p class="timeline-title">${recipientName} さんへ ${pointName} を ${formatNumber(item.points)}pt 応援投資</p>
             <p class="timeline-meta">${date}</p>
             <p class="timeline-reason">${reason}</p>
           </div>
@@ -311,6 +415,7 @@ function renderTimeline() {
 
 function renderApp() {
   renderStats();
+  renderPortfolio();
   renderMembers();
   renderTimeline();
 }
