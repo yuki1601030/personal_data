@@ -5,7 +5,7 @@ const pointLabels = {
   collaboration: "協働ポイント",
 };
 
-const members = [
+const initialMembers = [
   {
     id: "aoi-mori",
     name: "森 あおい",
@@ -58,7 +58,7 @@ const members = [
   },
 ];
 
-const timeline = [
+const initialTimeline = [
   {
     recipientId: "ren-kisaragi",
     type: "growth",
@@ -95,8 +95,172 @@ const memberModal = document.querySelector("#member-modal");
 const memberModalCard = document.querySelector(".member-modal-card");
 const memberModalContent = document.querySelector("#member-modal-content");
 const modalCloseButton = document.querySelector(".modal-close");
+const resetSampleDataButton = document.querySelector("#reset-sample-data");
+const storageStatus = document.querySelector("#storage-status");
 
+const storageKey = "growthPointsPrototypeData";
+const storageStatusDefaultText = "ブラウザに保存済み";
+
+let members = [];
+let timeline = [];
 let lastFocusedElement = null;
+let activeModalMemberId = null;
+let storageStatusTimer = null;
+
+function cloneData(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function createSampleAppData() {
+  return {
+    members: cloneData(initialMembers),
+    timeline: cloneData(initialTimeline),
+  };
+}
+
+function isPlainObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isValidPoints(points) {
+  return isPlainObject(points) && Object.keys(pointLabels).every((type) => Number.isFinite(points[type]) && points[type] >= 0);
+}
+
+function isValidStringArray(value) {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function isValidMember(member) {
+  return isPlainObject(member)
+    && typeof member.id === "string"
+    && typeof member.name === "string"
+    && typeof member.role === "string"
+    && typeof member.specialty === "string"
+    && isValidPoints(member.points)
+    && Number.isFinite(member.previousScore)
+    && isValidStringArray(member.strengthTags)
+    && isValidStringArray(member.growthOpportunities);
+}
+
+function isValidTimelineItem(item) {
+  return isPlainObject(item)
+    && typeof item.recipientId === "string"
+    && Object.prototype.hasOwnProperty.call(pointLabels, item.type)
+    && Number.isFinite(item.points)
+    && item.points > 0
+    && typeof item.reason === "string"
+    && typeof item.date === "string";
+}
+
+function isValidAppData(data) {
+  return isPlainObject(data)
+    && Array.isArray(data.members)
+    && data.members.length > 0
+    && data.members.every(isValidMember)
+    && Array.isArray(data.timeline)
+    && data.timeline.every(isValidTimelineItem);
+}
+
+function setAppData(data) {
+  members = cloneData(data.members);
+  timeline = cloneData(data.timeline);
+}
+
+function getAppData() {
+  return {
+    members: cloneData(members),
+    timeline: cloneData(timeline),
+  };
+}
+
+function setStorageStatus(message = storageStatusDefaultText, temporary = false) {
+  if (!storageStatus) {
+    return;
+  }
+
+  storageStatus.textContent = message;
+  storageStatus.classList.toggle("is-saved-now", temporary);
+
+  if (storageStatusTimer) {
+    window.clearTimeout(storageStatusTimer);
+  }
+
+  if (temporary) {
+    storageStatusTimer = window.setTimeout(() => {
+      storageStatus.textContent = storageStatusDefaultText;
+      storageStatus.classList.remove("is-saved-now");
+      storageStatusTimer = null;
+    }, 2200);
+  }
+}
+
+function saveAppData(temporaryStatus = false) {
+  try {
+    localStorage.setItem(storageKey, JSON.stringify(getAppData()));
+    setStorageStatus(temporaryStatus ? "保存しました" : storageStatusDefaultText, temporaryStatus);
+    return true;
+  } catch (error) {
+    setStorageStatus("保存できませんでした");
+    return false;
+  }
+}
+
+function loadAppData() {
+  const sampleData = createSampleAppData();
+
+  try {
+    const storedData = localStorage.getItem(storageKey);
+
+    if (!storedData) {
+      setAppData(sampleData);
+      saveAppData();
+      return;
+    }
+
+    const parsedData = JSON.parse(storedData);
+
+    if (!isValidAppData(parsedData)) {
+      throw new Error("Invalid localStorage data");
+    }
+
+    setAppData(parsedData);
+    setStorageStatus();
+  } catch (error) {
+    setAppData(sampleData);
+    saveAppData();
+  }
+}
+
+function resetToSampleData() {
+  const confirmed = window.confirm("現在のポイント履歴を削除し、サンプルデータに戻します。よろしいですか？");
+
+  if (!confirmed) {
+    return;
+  }
+
+  try {
+    localStorage.removeItem(storageKey);
+  } catch (error) {
+    // localStorageを利用できない環境でも、画面上のデータはサンプルに戻します。
+  }
+
+  setAppData(createSampleAppData());
+  saveAppData(true);
+  renderMemberOptions();
+  renderApp();
+
+  if (memberModal.classList.contains("is-open") && activeModalMemberId) {
+    const member = getMemberById(activeModalMemberId);
+
+    if (member) {
+      renderMemberModal(member);
+    } else {
+      closeMemberModal();
+    }
+  }
+
+  formMessage.textContent = "サンプルデータに戻しました。";
+}
 
 function getMemberById(id) {
   return members.find((member) => member.id === id);
@@ -369,6 +533,7 @@ function openMemberModal(memberId) {
   }
 
   lastFocusedElement = document.activeElement;
+  activeModalMemberId = memberId;
   renderMemberModal(member);
   memberModal.classList.add("is-open");
   memberModal.setAttribute("aria-hidden", "false");
@@ -384,6 +549,7 @@ function closeMemberModal() {
   memberModal.classList.remove("is-open");
   memberModal.setAttribute("aria-hidden", "true");
   document.body.classList.remove("modal-open");
+  activeModalMemberId = null;
 
   if (lastFocusedElement) {
     lastFocusedElement.focus();
@@ -450,7 +616,12 @@ form.addEventListener("submit", (event) => {
 
   member.points[newItem.type] += newItem.points;
   timeline.unshift(newItem);
+  saveAppData(true);
   renderApp();
+
+  if (memberModal.classList.contains("is-open") && activeModalMemberId === member.id) {
+    renderMemberModal(member);
+  }
 
   form.reset();
   document.querySelector("#points").value = 10;
@@ -468,6 +639,7 @@ memberList.addEventListener("click", (event) => {
 });
 
 modalCloseButton.addEventListener("click", closeMemberModal);
+resetSampleDataButton.addEventListener("click", resetToSampleData);
 
 memberModal.addEventListener("click", (event) => {
   if (event.target === memberModal) {
@@ -481,5 +653,6 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+loadAppData();
 renderMemberOptions();
 renderApp();
