@@ -3,118 +3,105 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>人財成長ポイント運用システム Prototype</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <title>人財成長ポイント Prototype</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="hero">
-    <nav class="topbar" aria-label="メインナビゲーション">
-      <a class="brand" href="#top" aria-label="トップへ戻る">
-        <span class="brand-mark">G</span>
+    <nav class="top-nav" aria-label="メインナビゲーション">
+      <a class="logo" href="#top" aria-label="人財成長ポイント Prototype ホーム">
+        <span class="logo-mark">G</span>
         <span>Growth Points</span>
       </a>
       <div class="nav-links">
         <a href="#members">メンバー</a>
-        <a href="#send-point">ポイント送信</a>
+        <a href="#send-point">ポイント投資</a>
         <a href="#timeline">タイムライン</a>
       </div>
     </nav>
 
     <section id="top" class="hero-content">
-      <div>
-        <p class="eyebrow">Future Growth Investment</p>
-        <h1>人材評価を、未来への成長投資に。</h1>
-        <p class="hero-copy">
-          日々の協働で生まれる「信頼」「成長期待」「感謝」「協働価値」を、
-          メンバー同士のポイント投資として見える化するプロトタイプです。
-        </p>
-        <div class="hero-actions">
-          <a class="primary-button" href="#send-point">ポイントを送る</a>
-          <a class="secondary-button" href="#members">メンバーを見る</a>
-        </div>
-      </div>
-      <div class="summary-panel" aria-label="サマリー">
-        <div class="summary-item">
-          <span id="totalPoints" class="summary-value">0</span>
-          <span class="summary-label">総ポイント数</span>
-        </div>
-        <div class="summary-item">
-          <span id="memberCount" class="summary-value">0</span>
-          <span class="summary-label">登録メンバー</span>
-        </div>
-        <div class="summary-item wide">
-          <span class="summary-label">最近のポイント投資</span>
-          <strong id="latestInvestment">読み込み中...</strong>
-        </div>
+      <p class="eyebrow">Future Growth Investment</p>
+      <h1>人財成長ポイント</h1>
+      <p class="concept">人材評価を、過去の査定から未来の成長投資へ</p>
+      <p class="hero-description">
+        日々の応援・感謝・期待をポイントとして可視化し、メンバーの成長を明るく後押しするための練習用プロトタイプです。
+      </p>
+
+      <div class="stats-grid" aria-label="サマリー指標">
+        <article class="stat-card">
+          <span class="stat-label">登録メンバー数</span>
+          <strong id="member-count">0</strong>
+          <span class="stat-unit">members</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">総ポイント数</span>
+          <strong id="total-points">0</strong>
+          <span class="stat-unit">points</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">最近のポイント投資数</span>
+          <strong id="recent-investments">0</strong>
+          <span class="stat-unit">posts</span>
+        </article>
       </div>
     </section>
   </header>
 
   <main>
-    <section id="members" class="section">
+    <section id="members" class="section-block">
       <div class="section-heading">
         <p class="eyebrow">Members</p>
         <h2>メンバー一覧</h2>
-        <p>各メンバーの強みとポイント内訳をカードで確認できます。</p>
+        <p>架空のメンバーの強みとポイントをカードで確認できます。</p>
       </div>
-      <div id="memberGrid" class="member-grid" aria-live="polite"></div>
+      <div id="member-list" class="member-grid" aria-live="polite"></div>
     </section>
 
-    <section id="send-point" class="section form-section">
-      <div class="form-intro">
+    <section id="send-point" class="section-block two-column">
+      <div class="section-heading form-intro">
         <p class="eyebrow">Point Investment</p>
-        <h2>ポイントを送る</h2>
+        <h2>ポイント送信フォーム</h2>
         <p>
-          感じた価値をその場で記録しましょう。送信するとメンバーカードとタイムラインに即時反映されます。
+          信頼、成長期待、感謝、協働の気持ちを短い理由と一緒に届けます。送信するとメンバーのポイントとタイムラインに即時反映されます。
         </p>
       </div>
 
-      <form id="pointForm" class="point-form">
-        <label>
-          送信者
-          <select id="sender" name="sender" required></select>
-        </label>
-        <label>
-          送信先
-          <select id="receiver" name="receiver" required></select>
-        </label>
-        <label>
-          ポイント種類
-          <select id="pointType" name="pointType" required>
-            <option value="trust">信頼ポイント</option>
-            <option value="growth">成長期待ポイント</option>
-            <option value="thanks">感謝ポイント</option>
-            <option value="collaboration">協働ポイント</option>
-          </select>
-        </label>
-        <label>
-          ポイント数
-          <input id="amount" name="amount" type="number" min="1" max="20" value="5" required>
-        </label>
-        <label class="full-width">
-          投資理由
-          <textarea id="reason" name="reason" rows="4" placeholder="例：難しい調整を前向きに進めてくれて、チーム全体が安心して動けました。" required></textarea>
-        </label>
-        <button class="primary-button full-width" type="submit">ポイントを送信する</button>
-        <p id="formMessage" class="form-message" role="status" aria-live="polite"></p>
+      <form id="point-form" class="point-form">
+        <label for="recipient">送信先メンバー</label>
+        <select id="recipient" name="recipient" required></select>
+
+        <label for="point-type">ポイント種類</label>
+        <select id="point-type" name="pointType" required>
+          <option value="trust">信頼ポイント</option>
+          <option value="growth">成長期待ポイント</option>
+          <option value="thanks">感謝ポイント</option>
+          <option value="collaboration">協働ポイント</option>
+        </select>
+
+        <label for="points">ポイント数</label>
+        <input id="points" name="points" type="number" min="1" max="100" value="10" required>
+
+        <label for="reason">理由</label>
+        <textarea id="reason" name="reason" rows="4" maxlength="140" placeholder="例：前向きな提案でチームの視野を広げてくれたため" required></textarea>
+
+        <button type="submit">ポイントを送信する</button>
+        <p id="form-message" class="form-message" role="status" aria-live="polite"></p>
       </form>
     </section>
 
-    <section id="timeline" class="section">
+    <section id="timeline" class="section-block">
       <div class="section-heading">
         <p class="eyebrow">Timeline</p>
         <h2>ポイント投資タイムライン</h2>
-        <p>誰が誰に、どんな価値を見つけたのかを時系列で振り返れます。</p>
+        <p>新しいポイント投資ほど上に表示されます。</p>
       </div>
-      <div id="timelineList" class="timeline-list" aria-live="polite"></div>
+      <div id="timeline-list" class="timeline-list" aria-live="polite"></div>
     </section>
   </main>
 
-  <footer class="footer">
-    <p>© 2026 Growth Points Prototype. Built with HTML, CSS and JavaScript.</p>
+  <footer>
+    <p>この画面は練習用プロトタイプです。表示内容はすべて架空のサンプルデータです。</p>
   </footer>
 
   <script src="script.js"></script>

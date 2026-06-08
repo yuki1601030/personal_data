@@ -7,167 +7,144 @@ const pointLabels = {
 
 const members = [
   {
-    id: "sato",
-    name: "佐藤 健太",
+    id: "aoi-mori",
+    name: "森 あおい",
     role: "プロジェクトリーダー",
-    specialty: "プロジェクト推進・意思決定支援",
-    tags: ["巻き込み力", "安定感", "課題整理"],
-    points: { trust: 42, growth: 30, thanks: 24, collaboration: 36 },
+    specialty: "前向きな合意形成と進行設計",
+    points: { trust: 42, growth: 34, thanks: 28, collaboration: 38 },
   },
   {
-    id: "suzuki",
-    name: "鈴木 美咲",
+    id: "ren-kisaragi",
+    name: "如月 蓮",
     role: "UXデザイナー",
-    specialty: "ユーザー調査・体験設計",
-    tags: ["共感力", "可視化", "ファシリテーション"],
-    points: { trust: 34, growth: 38, thanks: 29, collaboration: 41 },
+    specialty: "利用者視点の体験整理",
+    points: { trust: 31, growth: 45, thanks: 36, collaboration: 29 },
   },
   {
-    id: "tanaka",
-    name: "田中 翔太",
+    id: "haru-nanase",
+    name: "七瀬 晴",
     role: "エンジニア",
-    specialty: "フロントエンド開発・品質改善",
-    tags: ["実装力", "改善提案", "学習速度"],
-    points: { trust: 37, growth: 45, thanks: 31, collaboration: 28 },
+    specialty: "試作を素早く形にする実装力",
+    points: { trust: 39, growth: 41, thanks: 26, collaboration: 32 },
   },
   {
-    id: "yamamoto",
-    name: "山本 葵",
+    id: "mio-asahi",
+    name: "朝日 美緒",
     role: "ビジネス企画",
-    specialty: "事業仮説検証・ステークホルダー調整",
-    tags: ["仮説構築", "調整力", "推進力"],
-    points: { trust: 29, growth: 36, thanks: 33, collaboration: 32 },
+    specialty: "アイデアを行動計画へ変える構想力",
+    points: { trust: 27, growth: 43, thanks: 33, collaboration: 35 },
   },
   {
-    id: "takahashi",
-    name: "高橋 直人",
+    id: "sora-tachibana",
+    name: "橘 空",
     role: "データアナリスト",
-    specialty: "分析設計・インサイト抽出",
-    tags: ["分析力", "構造化", "説明力"],
-    points: { trust: 31, growth: 40, thanks: 27, collaboration: 26 },
+    specialty: "数字から次の仮説を見つける分析力",
+    points: { trust: 35, growth: 37, thanks: 30, collaboration: 34 },
   },
 ];
 
-let timeline = [
+const timeline = [
   {
-    senderId: "sato",
-    receiverId: "suzuki",
-    type: "collaboration",
-    amount: 8,
-    reason: "ユーザーインタビューの気づきを分かりやすく整理し、次の検証方針をチームで合意できる状態にしてくれました。",
-    date: "2026-06-06 15:20",
-  },
-  {
-    senderId: "yamamoto",
-    receiverId: "tanaka",
+    recipientId: "ren-kisaragi",
     type: "growth",
-    amount: 10,
-    reason: "短期間で新しい実装方針を吸収し、品質面のリスクまで先回りして提案してくれました。",
-    date: "2026-06-05 11:05",
+    points: 12,
+    reason: "新しい視点で画面案を整理し、改善の方向性を明るく示してくれたため。",
+    date: "2026-06-08 09:40",
   },
   {
-    senderId: "takahashi",
-    receiverId: "sato",
-    type: "trust",
-    amount: 7,
-    reason: "判断に迷う場面で論点を明確にし、安心して次のアクションへ進める状態を作ってくれました。",
-    date: "2026-06-04 17:45",
+    recipientId: "haru-nanase",
+    type: "thanks",
+    points: 10,
+    reason: "短時間で試作品を動く形にして、みんなが次の議論に進みやすくなったため。",
+    date: "2026-06-07 16:15",
+  },
+  {
+    recipientId: "mio-asahi",
+    type: "collaboration",
+    points: 8,
+    reason: "意見を引き出しながら前向きにまとめてくれて、また一緒に進めたいと感じたため。",
+    date: "2026-06-06 11:20",
   },
 ];
 
-const memberGrid = document.querySelector("#memberGrid");
-const timelineList = document.querySelector("#timelineList");
-const totalPoints = document.querySelector("#totalPoints");
-const memberCount = document.querySelector("#memberCount");
-const latestInvestment = document.querySelector("#latestInvestment");
-const pointForm = document.querySelector("#pointForm");
-const senderSelect = document.querySelector("#sender");
-const receiverSelect = document.querySelector("#receiver");
-const formMessage = document.querySelector("#formMessage");
+const memberList = document.querySelector("#member-list");
+const recipientSelect = document.querySelector("#recipient");
+const timelineList = document.querySelector("#timeline-list");
+const form = document.querySelector("#point-form");
+const formMessage = document.querySelector("#form-message");
+const memberCount = document.querySelector("#member-count");
+const totalPoints = document.querySelector("#total-points");
+const recentInvestments = document.querySelector("#recent-investments");
 
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-function getMember(id) {
+function getMemberById(id) {
   return members.find((member) => member.id === id);
 }
 
-function getTotalScore(member) {
-  return Object.values(member.points).reduce((sum, point) => sum + point, 0);
+function calculateScore(member) {
+  return Object.values(member.points).reduce((sum, value) => sum + value, 0);
 }
 
-function getAllPoints() {
-  return members.reduce((sum, member) => sum + getTotalScore(member), 0);
+function formatNumber(value) {
+  return value.toLocaleString("ja-JP");
 }
 
-function renderSelectOptions() {
-  const options = members
-    .map((member) => `<option value="${escapeHtml(member.id)}">${escapeHtml(member.name)}（${escapeHtml(member.role)}）</option>`)
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (character) => {
+    const entities = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "\"": "&quot;",
+      "'": "&#039;",
+    };
+
+    return entities[character];
+  });
+}
+
+function renderStats() {
+  const total = members.reduce((sum, member) => sum + calculateScore(member), 0);
+
+  memberCount.textContent = formatNumber(members.length);
+  totalPoints.textContent = formatNumber(total);
+  recentInvestments.textContent = formatNumber(timeline.length);
+}
+
+function renderMemberOptions() {
+  recipientSelect.innerHTML = members
+    .map((member) => `<option value="${member.id}">${member.name} / ${member.role}</option>`)
     .join("");
-
-  senderSelect.innerHTML = options;
-  receiverSelect.innerHTML = options;
-  receiverSelect.selectedIndex = 1;
-}
-
-function renderSummary() {
-  totalPoints.textContent = getAllPoints().toLocaleString("ja-JP");
-  memberCount.textContent = members.length;
-
-  const latest = timeline[0];
-  const sender = getMember(latest.senderId);
-  const receiver = getMember(latest.receiverId);
-  latestInvestment.textContent = `${sender.name} → ${receiver.name}：${pointLabels[latest.type]} +${latest.amount}`;
 }
 
 function renderMembers() {
-  const maxPoint = Math.max(...members.flatMap((member) => Object.values(member.points)));
-
-  memberGrid.innerHTML = members
+  memberList.innerHTML = members
     .map((member) => {
-      const total = getTotalScore(member);
-      const initials = member.name
-        .split(" ")
-        .map((word) => word[0])
-        .join("");
-      const pointRows = Object.entries(pointLabels)
-        .map(([key, label]) => {
-          const value = member.points[key];
-          const width = Math.max(8, Math.round((value / maxPoint) * 100));
-          return `
-            <div class="point-row">
-              <span>${escapeHtml(label)}</span>
-              <div class="bar" aria-hidden="true"><span style="width: ${width}%"></span></div>
-              <strong>${value}</strong>
-            </div>
-          `;
-        })
-        .join("");
+      const score = calculateScore(member);
+      const initials = escapeHtml(member.name.replace(" ", "").slice(0, 2));
+      const name = escapeHtml(member.name);
+      const role = escapeHtml(member.role);
+      const specialty = escapeHtml(member.specialty);
 
       return `
         <article class="member-card">
-          <div class="member-top">
-            <div class="avatar" aria-hidden="true">${escapeHtml(initials)}</div>
+          <div class="member-header">
+            <div class="avatar" aria-hidden="true">${initials}</div>
             <div>
-              <h3 class="member-name">${escapeHtml(member.name)}</h3>
-              <p class="member-role">${escapeHtml(member.role)}</p>
+              <h3 class="member-name">${name}</h3>
+              <p class="role">${role}</p>
+            </div>
+            <div class="score-badge">
+              <span>総合スコア</span>
+              <strong>${formatNumber(score)}</strong>
             </div>
           </div>
-          <p class="member-specialty">得意領域：${escapeHtml(member.specialty)}</p>
-          <div class="tags" aria-label="強みタグ">
-            ${member.tags.map((tag) => `<span class="tag">#${escapeHtml(tag)}</span>`).join("")}
+          <p class="specialty">得意領域：${specialty}</p>
+          <div class="point-list" aria-label="${name}のポイント内訳">
+            <div class="point-row"><span>${pointLabels.trust}</span><strong>${formatNumber(member.points.trust)}</strong></div>
+            <div class="point-row"><span>${pointLabels.growth}</span><strong>${formatNumber(member.points.growth)}</strong></div>
+            <div class="point-row"><span>${pointLabels.thanks}</span><strong>${formatNumber(member.points.thanks)}</strong></div>
+            <div class="point-row"><span>${pointLabels.collaboration}</span><strong>${formatNumber(member.points.collaboration)}</strong></div>
           </div>
-          <div class="score-box">
-            <span class="score-label">総合スコア</span>
-            <span class="score-value">${total}</span>
-          </div>
-          <div class="point-breakdown">${pointRows}</div>
         </article>
       `;
     })
@@ -177,86 +154,68 @@ function renderMembers() {
 function renderTimeline() {
   timelineList.innerHTML = timeline
     .map((item) => {
-      const sender = getMember(item.senderId);
-      const receiver = getMember(item.receiverId);
+      const member = getMemberById(item.recipientId);
+      const recipientName = escapeHtml(member ? member.name : "架空メンバー");
+      const pointName = escapeHtml(pointLabels[item.type]);
+      const reason = escapeHtml(item.reason);
+      const date = escapeHtml(item.date);
 
       return `
         <article class="timeline-item">
-          <div class="timeline-meta">
-            <span>${escapeHtml(item.date)}</span>
-            <span>${escapeHtml(pointLabels[item.type])} +${item.amount}</span>
+          <div class="timeline-icon" aria-hidden="true">＋</div>
+          <div>
+            <p class="timeline-title">${recipientName} さんへ ${pointName} を ${formatNumber(item.points)}pt 投資</p>
+            <p class="timeline-meta">${date}</p>
+            <p class="timeline-reason">${reason}</p>
           </div>
-          <div class="timeline-title">${escapeHtml(sender.name)} から ${escapeHtml(receiver.name)} へ</div>
-          <p class="timeline-reason">${escapeHtml(item.reason)}</p>
         </article>
       `;
     })
     .join("");
 }
 
-function rerender() {
+function renderApp() {
+  renderStats();
   renderMembers();
-  renderSummary();
   renderTimeline();
 }
 
-function formatDate(date) {
-  const formatter = new Intl.DateTimeFormat("ja-JP", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
-  return formatter.format(date).replaceAll("/", "-");
+function createTimelineItem(formData) {
+  return {
+    recipientId: formData.get("recipient"),
+    type: formData.get("pointType"),
+    points: Number(formData.get("points")),
+    reason: formData.get("reason").trim(),
+    date: new Date().toLocaleString("ja-JP", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+  };
 }
 
-pointForm.addEventListener("submit", (event) => {
+form.addEventListener("submit", (event) => {
   event.preventDefault();
 
-  const formData = new FormData(pointForm);
-  const senderId = formData.get("sender");
-  const receiverId = formData.get("receiver");
-  const type = formData.get("pointType");
-  const amount = Number(formData.get("amount"));
-  const reason = formData.get("reason").trim();
+  const formData = new FormData(form);
+  const newItem = createTimelineItem(formData);
+  const member = getMemberById(newItem.recipientId);
 
-  if (senderId === receiverId) {
-    formMessage.textContent = "送信者と送信先は別のメンバーを選択してください。";
+  if (!member || !newItem.type || newItem.points < 1 || !newItem.reason) {
+    formMessage.textContent = "入力内容を確認してください。";
     return;
   }
 
-  if (!reason) {
-    formMessage.textContent = "投資理由を入力してください。";
-    return;
-  }
+  member.points[newItem.type] += newItem.points;
+  timeline.unshift(newItem);
+  renderApp();
 
-  if (!pointLabels[type] || !Number.isInteger(amount) || amount < 1 || amount > 20) {
-    formMessage.textContent = "ポイント種類とポイント数を正しく入力してください。";
-    return;
-  }
-
-  const receiver = getMember(receiverId);
-  receiver.points[type] += amount;
-
-  timeline = [
-    {
-      senderId,
-      receiverId,
-      type,
-      amount,
-      reason,
-      date: formatDate(new Date()),
-    },
-    ...timeline,
-  ];
-
-  rerender();
-  pointForm.reset();
-  receiverSelect.selectedIndex = 1;
-  formMessage.textContent = `${receiver.name}へ${pointLabels[type]}を${amount}ポイント送りました。`;
+  form.reset();
+  document.querySelector("#points").value = 10;
+  formMessage.textContent = `${member.name} さんへ ${formatNumber(newItem.points)}pt を送りました。`;
 });
 
-renderSelectOptions();
-rerender();
+renderMemberOptions();
+renderApp();
