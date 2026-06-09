@@ -14,6 +14,7 @@
         <span>Growth Points</span>
       </a>
       <div class="nav-links">
+        <a href="#organization-dashboard">組織ダッシュボード</a>
         <a href="#portfolio">人財ポートフォリオ</a>
         <a href="#members">メンバー</a>
         <a href="#send-point">応援投資</a>
@@ -51,6 +52,42 @@
   </header>
 
   <main>
+    <section id="organization-dashboard" class="section-block dashboard-section" aria-labelledby="organization-dashboard-title">
+      <div class="section-heading dashboard-heading">
+        <p class="eyebrow">Organization Dashboard</p>
+        <h2 id="organization-dashboard-title">組織ダッシュボード</h2>
+        <p>架空のサンプルデータから、チーム全体のポイント傾向を柔らかく確認できます。</p>
+      </div>
+
+      <div id="dashboard-summary" class="dashboard-summary-grid" aria-live="polite"></div>
+
+      <div class="dashboard-content-grid">
+        <article class="dashboard-panel dashboard-chart-panel">
+          <div class="dashboard-panel-heading">
+            <h3>ポイント種類別の傾向</h3>
+            <p>最大値を基準にした相対的な横棒グラフです。</p>
+          </div>
+          <div id="dashboard-chart" class="dashboard-chart" aria-live="polite"></div>
+        </article>
+
+        <article class="dashboard-panel dashboard-comment-panel">
+          <div class="dashboard-panel-heading">
+            <h3>チーム状態コメント</h3>
+            <p>断定ではなく、現在見えている傾向として表示します。</p>
+          </div>
+          <div id="dashboard-comments" class="dashboard-comments" aria-live="polite"></div>
+        </article>
+      </div>
+
+      <article class="dashboard-panel spotlight-panel">
+        <div class="dashboard-panel-heading">
+          <h3>注目メンバー</h3>
+          <p>特徴的なポイントを持つ架空メンバーを、確認用のサンプルとして表示します。</p>
+        </div>
+        <div id="dashboard-spotlights" class="spotlight-grid" aria-live="polite"></div>
+      </article>
+    </section>
+
     <section id="portfolio" class="section-block portfolio-section">
       <div class="section-heading">
         <p class="eyebrow">Talent Portfolio</p>

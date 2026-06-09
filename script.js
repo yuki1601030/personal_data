@@ -110,6 +110,10 @@ const initialTimeline = [
   },
 ];
 
+const dashboardSummary = document.querySelector("#dashboard-summary");
+const dashboardChart = document.querySelector("#dashboard-chart");
+const dashboardComments = document.querySelector("#dashboard-comments");
+const dashboardSpotlights = document.querySelector("#dashboard-spotlights");
 const portfolioList = document.querySelector("#portfolio-list");
 const memberList = document.querySelector("#member-list");
 const memberSearchInput = document.querySelector("#member-search");
@@ -134,6 +138,7 @@ const storageStatus = document.querySelector("#storage-status");
 const storageKey = "growthPointsPrototypeData";
 const storageStatusDefaultText = "ブラウザに保存済み";
 const allTagsLabel = "すべて";
+const dashboardPointTypes = ["trust", "growth", "thanks", "collaboration"];
 const strengthTagFilters = [
   allTagsLabel,
   "巻き込み力",
@@ -442,6 +447,181 @@ function renderStats() {
   memberCount.textContent = formatNumber(members.length);
   totalPoints.textContent = formatNumber(total);
   recentInvestments.textContent = formatNumber(timeline.length);
+}
+
+function getDashboardTotals() {
+  const pointTotals = dashboardPointTypes.reduce((totals, type) => {
+    totals[type] = members.reduce((sum, member) => sum + member.points[type], 0);
+    return totals;
+  }, {});
+  const totalScore = members.reduce((sum, member) => sum + calculateScore(member), 0);
+  const averageScore = members.length ? Math.round(totalScore / members.length) : 0;
+  const topPointType = dashboardPointTypes.reduce((topType, type) => {
+    if (pointTotals[type] > pointTotals[topType]) {
+      return type;
+    }
+
+    return topType;
+  }, dashboardPointTypes[0]);
+
+  return {
+    memberCount: members.length,
+    totalScore,
+    averageScore,
+    pointTotals,
+    topPointType,
+  };
+}
+
+function renderDashboardSummary(dashboardData) {
+  const summaryItems = [
+    { label: "総メンバー数", value: dashboardData.memberCount, unit: "members" },
+    { label: "総ポイント数", value: dashboardData.totalScore, unit: "points" },
+    { label: "平均総合スコア", value: dashboardData.averageScore, unit: "avg score" },
+    { label: "最も多いポイント種類", value: pointLabels[dashboardData.topPointType], unit: "trend", isText: true },
+    { label: "成長期待ポイント合計", value: dashboardData.pointTotals.growth, unit: "points" },
+    { label: "信頼ポイント合計", value: dashboardData.pointTotals.trust, unit: "points" },
+    { label: "感謝ポイント合計", value: dashboardData.pointTotals.thanks, unit: "points" },
+    { label: "協働ポイント合計", value: dashboardData.pointTotals.collaboration, unit: "points" },
+  ];
+
+  dashboardSummary.innerHTML = summaryItems
+    .map((item) => `
+      <article class="dashboard-summary-card">
+        <span>${escapeHtml(item.label)}</span>
+        <strong>${item.isText ? escapeHtml(item.value) : formatNumber(item.value)}</strong>
+        <small>${escapeHtml(item.unit)}</small>
+      </article>
+    `)
+    .join("");
+}
+
+function renderDashboardChart(dashboardData) {
+  const maxPointTotal = Math.max(...dashboardPointTypes.map((type) => dashboardData.pointTotals[type]), 1);
+
+  dashboardChart.innerHTML = dashboardPointTypes
+    .map((type) => {
+      const total = dashboardData.pointTotals[type];
+      const barRate = Math.max(6, Math.round((total / maxPointTotal) * 100));
+
+      return `
+        <div class="dashboard-chart-row">
+          <div class="dashboard-chart-meta">
+            <span>${escapeHtml(pointLabels[type])}</span>
+            <strong>${formatNumber(total)}pt</strong>
+          </div>
+          <div class="dashboard-bar" aria-label="${escapeHtml(pointLabels[type])} ${formatNumber(total)}ポイント、最大値比 ${barRate}%">
+            <span style="width: ${barRate}%"></span>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function getDashboardMainComment(topPointType) {
+  const comments = {
+    trust: "このチームは、安心して任せられる関係性が強みとして表れている傾向が見られます。",
+    growth: "このチームは、今後の挑戦や成長への期待が集まりやすい状態として確認できます。",
+    thanks: "このチームは、互いに支援し合う文化が見えやすい状態として表れています。",
+    collaboration: "このチームは、また一緒に働きたいと思える協働関係が形成されている傾向が見られます。",
+  };
+
+  return comments[topPointType];
+}
+
+function getDashboardBalanceComments(dashboardData) {
+  const totals = dashboardData.pointTotals;
+  const values = dashboardPointTypes.map((type) => totals[type]);
+  const maxValue = Math.max(...values, 1);
+  const averageValue = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const comments = [];
+  const lowComments = {
+    growth: "成長期待ポイントがやや少なめです。新しい挑戦や学びの機会を増やすことで、未来への期待が見えやすくなりそうです。",
+    thanks: "感謝ポイントがやや少なめです。日々の小さな支援や貢献を言語化する機会を増やすと、チームの支援関係が見えやすくなりそうです。",
+    trust: "信頼ポイントがやや少なめです。役割分担や約束の見える化を進めると、安心して任せられる関係が育ちやすくなります。",
+    collaboration: "協働ポイントがやや少なめです。振り返りの中で“また一緒に働きたい理由”を共有すると、協働価値が見えやすくなります。",
+  };
+
+  dashboardPointTypes.forEach((type) => {
+    if (totals[type] <= averageValue * 0.78 && totals[type] <= maxValue * 0.72) {
+      comments.push(lowComments[type]);
+    }
+  });
+
+  const highType = dashboardPointTypes.find((type) => totals[type] >= averageValue * 1.24 && totals[type] === maxValue);
+
+  if (highType) {
+    comments.unshift(`${pointLabels[highType]}が特に多く集まっています。${pointLabels[highType].replace("ポイント", "")}の傾向が強みとして表れています。`);
+  }
+
+  if (comments.length === 0) {
+    comments.push("4種類のポイントが比較的バランスよく集まっています。今の関わり方を続けながら、日々の小さな変化も確認できそうです。");
+  }
+
+  return comments.slice(0, 3);
+}
+
+function renderDashboardComments(dashboardData) {
+  const comments = [getDashboardMainComment(dashboardData.topPointType), ...getDashboardBalanceComments(dashboardData)];
+
+  dashboardComments.innerHTML = comments
+    .map((comment, index) => `
+      <p class="dashboard-comment${index === 0 ? " is-main" : ""}">${escapeHtml(comment)}</p>
+    `)
+    .join("");
+}
+
+function getTopMemberByValue(getValue) {
+  return [...members].sort((first, second) => getValue(second) - getValue(first))[0];
+}
+
+function renderDashboardSpotlights() {
+  const spotlightDefinitions = [
+    {
+      reason: "総合スコアが最も高いメンバーとして、注目ポイントとして確認できます。",
+      scoreLabel: "総合スコア",
+      getMember: () => getTopMemberByValue(calculateScore),
+      getScore: calculateScore,
+    },
+    {
+      reason: "成長期待ポイントが最も高く、今後の挑戦への期待が集まっている傾向が見られます。",
+      scoreLabel: pointLabels.growth,
+      getMember: () => getTopMemberByValue((member) => member.points.growth),
+      getScore: (member) => member.points.growth,
+    },
+    {
+      reason: "感謝ポイントが最も高く、日々の支援や貢献が見えやすいメンバーとして確認できます。",
+      scoreLabel: pointLabels.thanks,
+      getMember: () => getTopMemberByValue((member) => member.points.thanks),
+      getScore: (member) => member.points.thanks,
+    },
+  ];
+
+  dashboardSpotlights.innerHTML = spotlightDefinitions
+    .map((definition) => {
+      const member = definition.getMember();
+
+      return `
+        <article class="spotlight-card">
+          <span class="spotlight-label">${escapeHtml(definition.scoreLabel)}</span>
+          <h4>${escapeHtml(member.name)}</h4>
+          <p class="spotlight-role">${escapeHtml(member.role)}</p>
+          <p class="spotlight-reason">${escapeHtml(definition.reason)}</p>
+          <strong>${formatNumber(definition.getScore(member))}pt</strong>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function renderDashboard() {
+  const dashboardData = getDashboardTotals();
+
+  renderDashboardSummary(dashboardData);
+  renderDashboardChart(dashboardData);
+  renderDashboardComments(dashboardData);
+  renderDashboardSpotlights();
 }
 
 function renderMemberOptions() {
@@ -871,6 +1051,7 @@ function renderTimeline() {
 
 function renderApp() {
   renderStats();
+  renderDashboard();
   renderPortfolio();
   renderTagFilters();
   renderMembers();
