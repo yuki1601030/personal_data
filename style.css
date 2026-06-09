@@ -163,7 +163,11 @@ h1 {
 .portfolio-card,
 .point-form,
 .timeline-item,
-.growth-report-card {
+.growth-report-card,
+.dashboard-section,
+.dashboard-summary-card,
+.dashboard-panel,
+.spotlight-card {
   border: 1px solid rgba(219, 234, 254, 0.9);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.96);
@@ -216,6 +220,180 @@ main {
 
 .section-heading p:not(.eyebrow) {
   color: var(--muted);
+}
+
+.dashboard-section {
+  padding: clamp(24px, 4vw, 34px);
+  background: linear-gradient(135deg, #ffffff 0%, #f4f9ff 100%);
+}
+
+.dashboard-heading {
+  margin-bottom: 24px;
+}
+
+.dashboard-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.dashboard-summary-card {
+  padding: 18px;
+  box-shadow: 0 12px 28px rgba(11, 31, 58, 0.08);
+}
+
+.dashboard-summary-card span,
+.dashboard-summary-card small,
+.dashboard-panel-heading p,
+.dashboard-chart-meta span,
+.spotlight-label,
+.spotlight-role {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.dashboard-summary-card span,
+.dashboard-summary-card small {
+  display: block;
+}
+
+.dashboard-summary-card strong {
+  display: block;
+  margin: 6px 0 2px;
+  color: var(--navy);
+  font-size: clamp(1.45rem, 3vw, 2.05rem);
+  line-height: 1.15;
+}
+
+.dashboard-content-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(280px, 0.92fr);
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.dashboard-panel {
+  padding: 22px;
+  box-shadow: 0 14px 32px rgba(11, 31, 58, 0.08);
+}
+
+.dashboard-panel-heading {
+  margin-bottom: 18px;
+}
+
+.dashboard-panel-heading h3 {
+  margin-bottom: 4px;
+  color: var(--navy);
+  font-size: 1.18rem;
+}
+
+.dashboard-panel-heading p {
+  margin-bottom: 0;
+}
+
+.dashboard-chart {
+  display: grid;
+  gap: 16px;
+}
+
+.dashboard-chart-row {
+  display: grid;
+  gap: 8px;
+}
+
+.dashboard-chart-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dashboard-chart-meta strong {
+  color: var(--navy);
+}
+
+.dashboard-bar {
+  overflow: hidden;
+  height: 15px;
+  border-radius: 999px;
+  background: rgba(100, 116, 139, 0.14);
+}
+
+.dashboard-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--blue), var(--cyan));
+}
+
+.dashboard-comments {
+  display: grid;
+  gap: 12px;
+}
+
+.dashboard-comment {
+  margin-bottom: 0;
+  border: 1px solid rgba(219, 234, 254, 0.92);
+  border-radius: 16px;
+  padding: 14px 16px;
+  color: var(--navy-soft);
+  background: #f8fbff;
+}
+
+.dashboard-comment.is-main {
+  color: var(--navy);
+  background: var(--blue-light);
+  font-weight: 800;
+}
+
+.spotlight-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.spotlight-card {
+  position: relative;
+  overflow: hidden;
+  padding: 20px;
+  box-shadow: 0 12px 28px rgba(11, 31, 58, 0.08);
+}
+
+.spotlight-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 5px;
+  background: linear-gradient(90deg, var(--blue), var(--cyan));
+}
+
+.spotlight-label {
+  display: inline-flex;
+  margin-bottom: 10px;
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: var(--blue-light);
+}
+
+.spotlight-card h4 {
+  margin: 0 0 2px;
+  color: var(--navy);
+  font-size: 1.2rem;
+}
+
+.spotlight-role {
+  margin-bottom: 12px;
+}
+
+.spotlight-reason {
+  margin-bottom: 14px;
+  color: var(--text);
+}
+
+.spotlight-card strong {
+  color: var(--blue);
+  font-size: 1.45rem;
 }
 
 
@@ -713,7 +891,10 @@ footer p {
   .stats-grid,
   .member-grid,
   .two-column,
-  .control-grid {
+  .control-grid,
+  .dashboard-summary-grid,
+  .dashboard-content-grid,
+  .spotlight-grid {
     grid-template-columns: 1fr;
   }
 
@@ -773,7 +954,11 @@ footer p {
   .portfolio-card,
   .point-form,
   .timeline-item,
-  .growth-report-card {
+  .growth-report-card,
+  .dashboard-section,
+  .dashboard-summary-card,
+  .dashboard-panel,
+  .spotlight-card {
     border-radius: 18px;
   }
 
@@ -795,7 +980,8 @@ footer p {
     grid-template-columns: 1fr;
   }
 
-  .portfolio-section {
+  .portfolio-section,
+  .dashboard-section {
     padding: 22px;
     border-radius: 24px;
   }
