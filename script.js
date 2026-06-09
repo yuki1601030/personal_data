@@ -161,6 +161,22 @@ const sortOptions = {
   change: { label: "前回比が高い順", getValue: calculateScoreChange },
 };
 
+const careerProfileWarning = "このプロフィールは練習用プロトタイプによる自動生成例です。実際の転職・採用・評価には使用しないでください。実在する個人情報や社内情報は入力しないでください。";
+
+const careerHeadlineByPoint = {
+  trust: "安心して任せられる、信頼蓄積型",
+  growth: "次の挑戦に期待が集まる、成長加速型",
+  thanks: "周囲を支える、チーム貢献型",
+  collaboration: "また一緒に働きたいと思われる、協働推進型",
+};
+
+const collaborationStyleByPoint = {
+  trust: "課題を整理し、周囲を巻き込みながら前に進めるスタイル",
+  growth: "新しいアイデアを出しながら、周囲と一緒に形にしていくスタイル",
+  thanks: "困っているメンバーを支援し、チーム全体の前進を助けるスタイル",
+  collaboration: "多様な意見をつなぎ、チームの意思決定を支えるスタイル",
+};
+
 let members = [];
 let timeline = [];
 let memberFilters = {
@@ -1054,6 +1070,178 @@ function renderGrowthReport(member) {
   `;
 }
 
+function getPointTrendSummary(member) {
+  return [
+    `${pointLabels.trust} ${formatNumber(member.points.trust)}pt`,
+    `${pointLabels.growth} ${formatNumber(member.points.growth)}pt`,
+    `${pointLabels.thanks} ${formatNumber(member.points.thanks)}pt`,
+    `${pointLabels.collaboration} ${formatNumber(member.points.collaboration)}pt`,
+  ].join(" / ");
+}
+
+function getCareerTrustSummary(member, feedbackItems, topPointType) {
+  const hasFeedback = feedbackItems.length > 0;
+  const feedbackPhrase = hasFeedback
+    ? `タイムラインには${formatNumber(feedbackItems.length)}件の具体的なフィードバックがあり、${pointLabels[topPointType].replace("ポイント", "")}に関する行動の手がかりが見られます。`
+    : "タイムライン上のフィードバックはまだ少なめのため、今後さらに具体的な場面が蓄積されると説得力が高まりそうです。";
+
+  return `これまでのポイント傾向から、${member.specialty}や周囲との関わりに関する評価が集まりつつあります。信頼ポイントは${formatNumber(member.points.trust)}pt、協働ポイントは${formatNumber(member.points.collaboration)}ptです。${feedbackPhrase}断定的な評価ではなく、キャリア資産を説明するための参考材料として活用できそうです。`;
+}
+
+function getCareerCollaborationStyle(member, topPointType) {
+  const tags = member.strengthTags.join("・");
+
+  if (member.strengthTags.includes("データ分析")) {
+    return "専門性を活かし、チームの意思決定を支えるスタイル";
+  }
+
+  if (member.strengthTags.includes("チーム支援")) {
+    return "困っているメンバーを支援し、チーム全体の前進を助けるスタイル";
+  }
+
+  if (member.strengthTags.includes("アイデア創出")) {
+    return "新しいアイデアを出しながら、周囲と一緒に形にしていくスタイル";
+  }
+
+  if (member.strengthTags.includes("課題整理") || member.strengthTags.includes("巻き込み力")) {
+    return "課題を整理し、周囲を巻き込みながら前に進めるスタイル";
+  }
+
+  return `${collaborationStyleByPoint[topPointType]}（強みタグ：${tags}）`;
+}
+
+function getCareerGrowthExpectation(member, scoreChange) {
+  const opportunity = member.growthOpportunities[0] || "小さなテーマのリード";
+  const changeMessage = scoreChange >= 0
+    ? `前回比は${formatScoreChange(scoreChange)}ptで、直近の変化にも前向きな兆しが見られます。`
+    : `前回比は${formatScoreChange(scoreChange)}ptで、次の接点や挑戦機会を増やす余地がありそうです。`;
+
+  return `${changeMessage}${opportunity}のような機会で経験を重ねると、今後さらに具体的な実績が蓄積され、プロフィールの説得力が高まりそうです。`;
+}
+
+function generateCareerAssetProfile(member) {
+  const score = calculateScore(member);
+  const scoreChange = calculateScoreChange(member);
+  const topPointType = getTopPointType(member);
+  const feedbackItems = getFeedbackForMember(member.id);
+  const feedbackSummary = getFeedbackSummary(feedbackItems);
+  const nextOpportunity = member.growthOpportunities[0] || "小さな改善テーマのリード";
+
+  return {
+    title: "キャリア資産プロフィール",
+    name: member.name,
+    role: member.role,
+    catchphrase: `${careerHeadlineByPoint[topPointType]}の${member.role}`,
+    specialty: member.specialty,
+    strengthTags: member.strengthTags,
+    trustSummary: getCareerTrustSummary(member, feedbackItems, topPointType),
+    collaborationStyle: getCareerCollaborationStyle(member, topPointType),
+    growthExpectation: getCareerGrowthExpectation(member, scoreChange),
+    feedbackSummary,
+    nextOpportunity: `${nextOpportunity}の場面で力を発揮しやすそうです。あわせて、フィードバック理由を具体的に残すことで、社外にも説明しやすい信頼実績として整理しやすくなりそうです。`,
+    pointTrend: getPointTrendSummary(member),
+    scoreSummary: `総合スコア ${formatNumber(score)}pt / 前回比 ${formatScoreChange(scoreChange)}pt`,
+    warning: careerProfileWarning,
+  };
+}
+
+function formatCareerAssetProfileText(profile) {
+  return [
+    `${profile.title}：${profile.name} さん`,
+    `役割：${profile.role}`,
+    `キャッチコピー：${profile.catchphrase}`,
+    `得意領域：${profile.specialty}`,
+    `強みタグ：${profile.strengthTags.join("、")}`,
+    `ポイント傾向：${profile.pointTrend}`,
+    `スコア概要：${profile.scoreSummary}`,
+    `信頼実績サマリー：${profile.trustSummary}`,
+    `協働スタイル：${profile.collaborationStyle}`,
+    `成長期待ポイント：${profile.growthExpectation}`,
+    `最近のフィードバック要約：${profile.feedbackSummary}`,
+    `次に挑戦したい機会：${profile.nextOpportunity}`,
+    `注意：${profile.warning}`,
+  ].join("\n");
+}
+
+function renderCareerSharePreview(profile) {
+  return `
+    <section class="career-share-preview" data-career-share-preview hidden aria-label="共有プレビュー">
+      <div class="career-share-card">
+        <p class="eyebrow">Share Preview</p>
+        <h4>${escapeHtml(profile.name)}</h4>
+        <p class="career-share-role">${escapeHtml(profile.role)}</p>
+        <p class="career-share-catch">${escapeHtml(profile.catchphrase)}</p>
+        <dl class="career-share-list">
+          <div>
+            <dt>得意領域</dt>
+            <dd>${escapeHtml(profile.specialty)}</dd>
+          </div>
+          <div>
+            <dt>強みタグ</dt>
+            <dd><div class="tag-list">${profile.strengthTags.map((tag) => `<span class="tag-label">${escapeHtml(tag)}</span>`).join("")}</div></dd>
+          </div>
+          <div>
+            <dt>信頼実績サマリー</dt>
+            <dd>${escapeHtml(profile.trustSummary)}</dd>
+          </div>
+          <div>
+            <dt>協働スタイル</dt>
+            <dd>${escapeHtml(profile.collaborationStyle)}</dd>
+          </div>
+          <div>
+            <dt>最近のフィードバック要約</dt>
+            <dd>${escapeHtml(profile.feedbackSummary)}</dd>
+          </div>
+        </dl>
+        <p class="career-profile-warning">${escapeHtml(profile.warning)}</p>
+      </div>
+    </section>
+  `;
+}
+
+function renderCareerAssetProfile(member) {
+  const profile = generateCareerAssetProfile(member);
+  const profileItems = [
+    ["キャッチコピー", profile.catchphrase],
+    ["得意領域", profile.specialty],
+    ["強みタグ", `<div class="tag-list">${profile.strengthTags.map((tag) => `<span class="tag-label">${escapeHtml(tag)}</span>`).join("")}</div>`, true],
+    ["信頼実績サマリー", profile.trustSummary],
+    ["協働スタイル", profile.collaborationStyle],
+    ["成長期待ポイント", profile.growthExpectation],
+    ["最近のフィードバック要約", profile.feedbackSummary],
+    ["次に挑戦したい機会", profile.nextOpportunity],
+  ];
+
+  return `
+    <section class="career-profile-card" aria-labelledby="career-profile-title">
+      <div class="career-profile-header">
+        <div>
+          <p class="eyebrow">Career Asset Profile</p>
+          <h3 id="career-profile-title">${escapeHtml(profile.title)}</h3>
+          <p>${escapeHtml(profile.scoreSummary)}</p>
+        </div>
+        <div class="career-profile-actions">
+          <button type="button" class="copy-career-profile-button" data-member-id="${escapeHtml(member.id)}">プロフィールをコピー</button>
+          <button type="button" class="share-preview-button" data-member-id="${escapeHtml(member.id)}" aria-expanded="false">共有プレビュー</button>
+          <span class="career-profile-status" role="status" aria-live="polite"></span>
+        </div>
+      </div>
+      <dl class="career-profile-list">
+        ${profileItems
+          .map(([label, content, isHtml]) => `
+            <div class="career-profile-item">
+              <dt>${escapeHtml(label)}</dt>
+              <dd>${isHtml ? content : escapeHtml(content)}</dd>
+            </div>
+          `)
+          .join("")}
+      </dl>
+      <p class="career-profile-warning">${escapeHtml(profile.warning)}</p>
+      ${renderCareerSharePreview(profile)}
+    </section>
+  `;
+}
+
 async function copyTextToClipboard(text) {
   if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
     await navigator.clipboard.writeText(text);
@@ -1100,6 +1288,40 @@ function setCopyReportStatus(button, message, isSuccess = true) {
   }, 2200);
 }
 
+function setCareerProfileStatus(button, message, isSuccess = true) {
+  const profileCard = button.closest(".career-profile-card");
+  const status = profileCard ? profileCard.querySelector(".career-profile-status") : null;
+
+  if (!status) {
+    return;
+  }
+
+  status.textContent = message;
+  status.classList.toggle("is-error", !isSuccess);
+
+  window.setTimeout(() => {
+    if (status.textContent === message) {
+      status.textContent = "";
+      status.classList.remove("is-error");
+    }
+  }, 2200);
+}
+
+function toggleCareerSharePreview(button) {
+  const profileCard = button.closest(".career-profile-card");
+  const preview = profileCard ? profileCard.querySelector("[data-career-share-preview]") : null;
+
+  if (!preview) {
+    return;
+  }
+
+  const willOpen = preview.hasAttribute("hidden");
+  preview.toggleAttribute("hidden", !willOpen);
+  preview.classList.toggle("is-visible", willOpen);
+  button.setAttribute("aria-expanded", String(willOpen));
+  button.textContent = willOpen ? "共有プレビューを閉じる" : "共有プレビュー";
+}
+
 function renderMemberModal(member) {
   const score = calculateScore(member);
   const feedbackItems = getFeedbackForMember(member.id);
@@ -1136,6 +1358,8 @@ function renderMemberModal(member) {
     </div>
 
     ${renderGrowthReport(member)}
+
+    ${renderCareerAssetProfile(member)}
 
     ${renderMemberBalanceMemo(member)}
 
@@ -1344,6 +1568,41 @@ memberModal.addEventListener("click", (event) => {
     .catch(() => {
       setCopyReportStatus(copyButton, "コピー機能を利用できませんでした", false);
     });
+});
+
+memberModal.addEventListener("click", (event) => {
+  const copyButton = event.target.closest(".copy-career-profile-button");
+
+  if (!copyButton) {
+    return;
+  }
+
+  const member = getMemberById(copyButton.dataset.memberId);
+
+  if (!member) {
+    setCareerProfileStatus(copyButton, "コピーできませんでした", false);
+    return;
+  }
+
+  const profileText = formatCareerAssetProfileText(generateCareerAssetProfile(member));
+
+  copyTextToClipboard(profileText)
+    .then((copied) => {
+      setCareerProfileStatus(copyButton, copied ? "コピーしました" : "コピー機能を利用できませんでした", copied);
+    })
+    .catch(() => {
+      setCareerProfileStatus(copyButton, "コピー機能を利用できませんでした", false);
+    });
+});
+
+memberModal.addEventListener("click", (event) => {
+  const previewButton = event.target.closest(".share-preview-button");
+
+  if (!previewButton) {
+    return;
+  }
+
+  toggleCareerSharePreview(previewButton);
 });
 
 document.addEventListener("keydown", (event) => {

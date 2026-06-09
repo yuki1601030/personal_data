@@ -164,6 +164,7 @@ h1 {
 .point-form,
 .timeline-item,
 .growth-report-card,
+.career-profile-card,
 .dashboard-section,
 .dashboard-summary-card,
 .dashboard-panel,
@@ -1046,6 +1047,7 @@ footer p {
   .point-form,
   .timeline-item,
   .growth-report-card,
+  .career-profile-card,
   .dashboard-section,
   .dashboard-summary-card,
   .dashboard-panel,
@@ -1414,6 +1416,166 @@ body.modal-open {
   line-height: 1.75;
 }
 
+.career-profile-card {
+  position: relative;
+  overflow: hidden;
+  margin-top: 22px;
+  padding: clamp(20px, 3vw, 26px);
+  border-color: rgba(31, 143, 255, 0.2);
+  background:
+    radial-gradient(circle at 92% 0%, rgba(125, 211, 252, 0.26), transparent 28%),
+    linear-gradient(135deg, #ffffff 0%, #eef7ff 100%);
+}
+
+.career-profile-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 6px;
+  background: linear-gradient(90deg, var(--navy-soft), var(--blue), var(--cyan));
+}
+
+.career-profile-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.career-profile-header h3 {
+  margin-bottom: 6px;
+  color: var(--navy);
+  font-size: clamp(1.35rem, 3vw, 1.85rem);
+}
+
+.career-profile-header p:not(.eyebrow) {
+  margin-bottom: 0;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.career-profile-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  max-width: 360px;
+}
+
+.copy-career-profile-button,
+.share-preview-button {
+  margin-top: 0;
+  border-radius: 999px;
+  padding: 11px 16px;
+  font-size: 0.9rem;
+}
+
+.share-preview-button {
+  border: 1px solid rgba(31, 143, 255, 0.22);
+  color: var(--navy-soft);
+  background: var(--white);
+  box-shadow: none;
+}
+
+.share-preview-button:hover {
+  background: var(--blue-light);
+  box-shadow: 0 10px 18px rgba(31, 143, 255, 0.14);
+}
+
+.career-profile-status {
+  flex-basis: 100%;
+  min-height: 1.2em;
+  color: #0f766e;
+  font-size: 0.84rem;
+  font-weight: 800;
+  text-align: right;
+}
+
+.career-profile-status.is-error {
+  color: #64748b;
+}
+
+.career-profile-list,
+.career-share-list {
+  display: grid;
+  gap: 12px;
+}
+
+.career-profile-item,
+.career-share-list div {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.36fr) minmax(0, 1fr);
+  gap: 14px;
+  border: 1px solid rgba(219, 234, 254, 0.92);
+  border-radius: 16px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.career-profile-item dt,
+.career-share-list dt {
+  color: var(--navy);
+  font-weight: 900;
+}
+
+.career-profile-item dd,
+.career-share-list dd {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.75;
+}
+
+.career-profile-warning {
+  margin: 16px 0 0;
+  border: 1px solid rgba(31, 143, 255, 0.18);
+  border-radius: 14px;
+  padding: 10px 12px;
+  color: var(--navy-soft);
+  background: rgba(233, 244, 255, 0.74);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.career-share-preview {
+  margin-top: 18px;
+}
+
+.career-share-preview[hidden] {
+  display: none;
+}
+
+.career-share-card {
+  border: 1px solid rgba(11, 31, 58, 0.12);
+  border-radius: 22px;
+  padding: clamp(18px, 3vw, 24px);
+  background: #ffffff;
+  box-shadow: 0 18px 36px rgba(11, 31, 58, 0.1);
+}
+
+.career-share-card h4 {
+  margin: 0 0 2px;
+  color: var(--navy);
+  font-size: clamp(1.5rem, 4vw, 2.25rem);
+  letter-spacing: -0.04em;
+}
+
+.career-share-role {
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.career-share-catch {
+  border-radius: 18px;
+  padding: 14px 16px;
+  color: var(--white);
+  background: linear-gradient(135deg, var(--navy-soft), var(--blue));
+  font-size: clamp(1.05rem, 2.5vw, 1.25rem);
+  font-weight: 900;
+}
+
 
 @media (max-width: 760px) {
   .modal-member-header,
@@ -1427,19 +1589,35 @@ body.modal-open {
   }
 
   .growth-report-header,
-  .growth-report-item {
+  .growth-report-item,
+  .career-profile-header,
+  .career-profile-item,
+  .career-share-list div {
     grid-template-columns: 1fr;
   }
 
-  .growth-report-header {
+  .growth-report-header,
+  .career-profile-header {
     display: grid;
   }
 
-  .copy-report-area {
+  .copy-report-area,
+  .career-profile-actions {
     justify-items: stretch;
+    max-width: none;
   }
 
-  .copy-report-button {
+  .career-profile-actions {
+    display: grid;
+  }
+
+  .copy-report-button,
+  .copy-career-profile-button,
+  .share-preview-button {
     width: 100%;
+  }
+
+  .career-profile-status {
+    text-align: left;
   }
 }
