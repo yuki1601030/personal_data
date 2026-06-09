@@ -41,6 +41,7 @@ const initialMembers = [
     specialty: "前向きな合意形成と進行設計",
     points: { trust: 42, growth: 34, thanks: 28, collaboration: 38 },
     previousScore: 130,
+    scoreHistory: [118, 123, 127, 130, 142],
     strengthTags: ["巻き込み力", "課題整理", "調整力"],
     growthOpportunities: ["新規企画のリードに挑戦", "若手メンバーのメンターを担当"],
   },
@@ -51,6 +52,7 @@ const initialMembers = [
     specialty: "利用者視点の体験整理",
     points: { trust: 31, growth: 45, thanks: 36, collaboration: 29 },
     previousScore: 118,
+    scoreHistory: [106, 112, 118, 129, 141],
     strengthTags: ["顧客理解", "アイデア創出", "課題整理"],
     growthOpportunities: ["顧客ヒアリングの設計を担当", "他職種メンバーとの協働プロジェクトに参加"],
   },
@@ -61,6 +63,7 @@ const initialMembers = [
     specialty: "試作を素早く形にする実装力",
     points: { trust: 39, growth: 41, thanks: 26, collaboration: 32 },
     previousScore: 146,
+    scoreHistory: [148, 146, 139, 136, 138],
     strengthTags: ["実行推進", "チーム支援", "課題整理"],
     growthOpportunities: ["データを使った意思決定テーマを担当", "新しい試作テーマの技術検証を担当"],
   },
@@ -71,6 +74,7 @@ const initialMembers = [
     specialty: "アイデアを行動計画へ変える構想力",
     points: { trust: 27, growth: 43, thanks: 33, collaboration: 35 },
     previousScore: 138,
+    scoreHistory: [120, 126, 132, 138, 138],
     strengthTags: ["アイデア創出", "巻き込み力", "調整力"],
     growthOpportunities: ["新規企画のリードに挑戦", "他職種メンバーとの協働プロジェクトに参加"],
   },
@@ -81,6 +85,7 @@ const initialMembers = [
     specialty: "数字から次の仮説を見つける分析力",
     points: { trust: 35, growth: 37, thanks: 30, collaboration: 34 },
     previousScore: 136,
+    scoreHistory: [124, 128, 132, 136, 136],
     strengthTags: ["データ分析", "課題整理", "チーム支援"],
     growthOpportunities: ["データを使った意思決定テーマを担当", "顧客ヒアリング結果の分析設計を担当"],
   },
@@ -154,6 +159,10 @@ const dashboardComments = document.querySelector("#dashboard-comments");
 const biasAlerts = document.querySelector("#bias-alerts");
 const dashboardSpotlights = document.querySelector("#dashboard-spotlights");
 const portfolioList = document.querySelector("#portfolio-list");
+const scoreMarketSummary = document.querySelector("#score-market-summary");
+const scoreMarketSortList = document.querySelector("#score-market-sort-list");
+const scoreMarketComment = document.querySelector("#score-market-comment");
+const scoreMarketList = document.querySelector("#score-market-list");
 const memberList = document.querySelector("#member-list");
 const opportunityFilterList = document.querySelector("#opportunity-filter-list");
 const growthOpportunityList = document.querySelector("#growth-opportunity-list");
@@ -193,6 +202,14 @@ const strengthTagFilters = [
   "アイデア創出",
   "調整力",
 ];
+const marketSortOptions = {
+  score: { label: "人財スコア順", getValue: calculateScore },
+  growthRate: { label: "成長変化率順", getValue: calculateGrowthRate },
+  support: { label: "応援投資数順", getValue: getSupportInvestmentCount },
+  trust: { label: "信頼ポイント順", getValue: (member) => member.points.trust },
+  collaboration: { label: "協働ポイント順", getValue: (member) => member.points.collaboration },
+};
+
 const sortOptions = {
   score: { label: "総合スコアが高い順", getValue: calculateScore },
   growth: { label: "成長期待ポイントが高い順", getValue: (member) => member.points.growth },
@@ -225,6 +242,7 @@ let memberFilters = {
   selectedTag: allTagsLabel,
   sortKey: "score",
 };
+let marketSortKey = "score";
 let selectedOpportunityCategory = allTagsLabel;
 let lastFocusedElement = null;
 let activeModalMemberId = null;
@@ -261,6 +279,7 @@ function isValidMember(member) {
     && typeof member.specialty === "string"
     && isValidPoints(member.points)
     && Number.isFinite(member.previousScore)
+    && (member.scoreHistory === undefined || (Array.isArray(member.scoreHistory) && member.scoreHistory.every(Number.isFinite)))
     && isValidStringArray(member.strengthTags)
     && isValidStringArray(member.growthOpportunities);
 }
@@ -284,8 +303,26 @@ function isValidAppData(data) {
     && data.timeline.every(isValidTimelineItem);
 }
 
+function normalizeMemberData(member) {
+  const normalizedMember = cloneData(member);
+  const currentScore = calculateScore(normalizedMember);
+  const rawHistory = Array.isArray(normalizedMember.scoreHistory) ? normalizedMember.scoreHistory.filter(Number.isFinite) : [];
+
+  normalizedMember.scoreHistory = rawHistory.slice(-5);
+
+  if (normalizedMember.scoreHistory.at(-1) !== currentScore) {
+    normalizedMember.scoreHistory = [...normalizedMember.scoreHistory, currentScore].slice(-5);
+  }
+
+  if (normalizedMember.scoreHistory.length < 2) {
+    normalizedMember.scoreHistory = [normalizedMember.previousScore, currentScore].filter(Number.isFinite).slice(-5);
+  }
+
+  return normalizedMember;
+}
+
 function setAppData(data) {
-  members = cloneData(data.members);
+  members = cloneData(data.members).map(normalizeMemberData);
   timeline = cloneData(data.timeline);
 }
 
@@ -401,6 +438,64 @@ function calculateScoreChange(member) {
   return calculateScore(member) - member.previousScore;
 }
 
+function calculateGrowthRate(member) {
+  if (!member.previousScore) {
+    return 0;
+  }
+
+  return ((calculateScore(member) - member.previousScore) / member.previousScore) * 100;
+}
+
+function formatGrowthRate(value) {
+  const roundedValue = Math.abs(value).toFixed(1);
+
+  if (value > 0) {
+    return `+${roundedValue}%`;
+  }
+
+  if (value < 0) {
+    return `-${roundedValue}%`;
+  }
+
+  return "±0.0%";
+}
+
+function getSupportInvestmentCount(member) {
+  return timeline.filter((item) => item.recipientId === member.id).length;
+}
+
+function getMemberScoreHistory(member) {
+  const history = Array.isArray(member.scoreHistory) ? member.scoreHistory.filter(Number.isFinite) : [];
+
+  return (history.length > 0 ? history : [member.previousScore, calculateScore(member)]).slice(-5);
+}
+
+function updateMemberScoreHistory(member, score) {
+  member.scoreHistory = [...getMemberScoreHistory(member), score].slice(-5);
+}
+
+function renderMiniScoreChart(member, label = "過去5回分の人財スコア推移") {
+  const history = getMemberScoreHistory(member);
+  const maxScore = Math.max(...history, 1);
+
+  return `
+    <div class="mini-score-chart" role="img" aria-label="${escapeHtml(member.name)}さんの${escapeHtml(label)}：${history.map(formatNumber).join("、")}">
+      ${history
+        .map((score, index) => {
+          const height = Math.max(18, Math.round((score / maxScore) * 100));
+
+          return `
+            <span class="mini-score-bar" style="height: ${height}%">
+              <span class="mini-score-value">${formatNumber(score)}</span>
+              <span class="sr-only">${index + 1}回目 ${formatNumber(score)}</span>
+            </span>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
 function formatScoreChange(value) {
   if (value > 0) {
     return `+${formatNumber(value)}`;
@@ -417,11 +512,11 @@ function getInvestmentStatus(member) {
   const scoreChange = calculateScoreChange(member);
 
   if (scoreChange >= 12) {
-    return "急成長";
+    return "急成長中";
   }
 
   if (member.points.growth >= 42) {
-    return "注目人材";
+    return "期待集中";
   }
 
   if (member.points.trust >= 40) {
@@ -429,10 +524,10 @@ function getInvestmentStatus(member) {
   }
 
   if (member.points.thanks >= 34) {
-    return "支援期待";
+    return "支援貢献";
   }
 
-  return "専門性強化中";
+  return "じっくり蓄積";
 }
 
 function getScoreChangeClass(value) {
@@ -998,6 +1093,159 @@ function renderMemberFilterStatus(displayedCount) {
   `;
 }
 
+function getMarketSortedMembers() {
+  const sortOption = marketSortOptions[marketSortKey] || marketSortOptions.score;
+
+  return [...members].sort((first, second) => {
+    const sortDifference = sortOption.getValue(second) - sortOption.getValue(first);
+
+    if (sortDifference !== 0) {
+      return sortDifference;
+    }
+
+    return calculateScore(second) - calculateScore(first);
+  });
+}
+
+function getScoreMarketData() {
+  const totalTrustAssets = members.reduce((sum, member) => sum + calculateScore(member), 0);
+  const averageScore = members.length > 0 ? Math.round(totalTrustAssets / members.length) : 0;
+  const growthMembers = members.filter((member) => calculateScoreChange(member) > 0);
+  const topGrowthMember = getTopMemberByValue(calculateGrowthRate);
+  const topSupportMember = getTopMemberByValue(getSupportInvestmentCount);
+
+  return {
+    totalTrustAssets,
+    averageScore,
+    growthMembersCount: growthMembers.length,
+    topGrowthMember,
+    topSupportMember,
+  };
+}
+
+function renderScoreMarketSummary(marketData) {
+  const summaryItems = [
+    ["信頼資産総量", `${formatNumber(marketData.totalTrustAssets)}pt`, "全メンバーの人財スコア合計"],
+    ["平均人財スコア", `${formatNumber(marketData.averageScore)}pt`, "現在の平均的な蓄積状況"],
+    ["成長変化が大きいメンバー", marketData.topGrowthMember ? marketData.topGrowthMember.name : "-", marketData.topGrowthMember ? formatGrowthRate(calculateGrowthRate(marketData.topGrowthMember)) : "-"],
+    ["応援投資が集まっているメンバー", marketData.topSupportMember ? marketData.topSupportMember.name : "-", marketData.topSupportMember ? `${formatNumber(getSupportInvestmentCount(marketData.topSupportMember))}件` : "-"],
+    ["スコア上昇メンバー数", `${formatNumber(marketData.growthMembersCount)}名`, "前回比がプラスのメンバー"],
+  ];
+
+  scoreMarketSummary.innerHTML = summaryItems
+    .map(([label, value, description]) => `
+      <article class="market-summary-card">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(value)}</strong>
+        <p>${escapeHtml(description)}</p>
+      </article>
+    `)
+    .join("");
+}
+
+function renderScoreMarketSortChips() {
+  scoreMarketSortList.innerHTML = Object.entries(marketSortOptions)
+    .map(([key, option]) => {
+      const isActive = key === marketSortKey;
+
+      return `
+        <button type="button" class="market-sort-chip${isActive ? " is-active" : ""}" data-market-sort="${escapeHtml(key)}" aria-pressed="${isActive}">
+          ${escapeHtml(option.label)}
+        </button>
+      `;
+    })
+    .join("");
+}
+
+function getScoreMarketComment() {
+  const growthMembersCount = members.filter((member) => calculateScoreChange(member) > 0).length;
+  const pointTotals = dashboardPointTypes.reduce((totals, type) => {
+    totals[type] = members.reduce((sum, member) => sum + member.points[type], 0);
+    return totals;
+  }, {});
+  const supportCounts = members.map(getSupportInvestmentCount);
+  const maxSupportCount = Math.max(...supportCounts, 0);
+  const totalSupportCount = supportCounts.reduce((sum, count) => sum + count, 0);
+
+  if (totalSupportCount > 0 && maxSupportCount / totalSupportCount >= 0.55) {
+    return "一部のメンバーに応援投資が集まっています。まだ見えにくい貢献にも目を向けることで、より多面的な信頼資産を蓄積できそうです。";
+  }
+
+  if (pointTotals.growth >= pointTotals.trust && pointTotals.growth >= pointTotals.collaboration) {
+    return "成長期待ポイントが多く集まっており、次の挑戦機会につながる人財が見えやすい状態です。";
+  }
+
+  if (pointTotals.collaboration >= pointTotals.trust && pointTotals.collaboration >= pointTotals.growth) {
+    return "協働ポイントが多く集まっており、また一緒に働きたいと思われる関係性が可視化されています。";
+  }
+
+  if (growthMembersCount >= Math.ceil(members.length * 0.6)) {
+    return "全体として、成長変化が前向きに表れています。応援投資や具体的なフィードバックが、メンバーの成長機会を見えやすくしています。";
+  }
+
+  return "多面的なフィードバックが増えると、さらに納得感が高まりそうです。信頼資産と協働価値の蓄積を、次の機会接続に活かせそうです。";
+}
+
+function renderScoreMarketCards() {
+  const sortedMembers = getMarketSortedMembers();
+
+  scoreMarketList.innerHTML = sortedMembers
+    .map((member) => {
+      const score = calculateScore(member);
+      const scoreChange = calculateScoreChange(member);
+      const growthRate = calculateGrowthRate(member);
+      const changeClass = getScoreChangeClass(scoreChange);
+      const status = getInvestmentStatus(member);
+      const supportCount = getSupportInvestmentCount(member);
+
+      return `
+        <article class="score-market-card">
+          <div class="score-market-card-header">
+            <div>
+              <span class="market-status-pill">${escapeHtml(status)}</span>
+              <h3>${escapeHtml(member.name)}</h3>
+              <p>${escapeHtml(member.role)}</p>
+            </div>
+            <div class="market-score-block">
+              <span>人財スコア</span>
+              <strong>${formatNumber(score)}</strong>
+            </div>
+          </div>
+
+          <div class="market-metric-row">
+            <div class="market-change ${changeClass}"><span>前回比</span><strong>${formatScoreChange(scoreChange)}pt</strong></div>
+            <div class="market-change ${changeClass}"><span>成長変化率</span><strong>${formatGrowthRate(growthRate)}</strong></div>
+            <div><span>応援投資数</span><strong>${formatNumber(supportCount)}件</strong></div>
+          </div>
+
+          <div class="market-point-grid">
+            <div><span>信頼ポイント</span><strong>${formatNumber(member.points.trust)}</strong></div>
+            <div><span>成長期待ポイント</span><strong>${formatNumber(member.points.growth)}</strong></div>
+            <div><span>感謝ポイント</span><strong>${formatNumber(member.points.thanks)}</strong></div>
+            <div><span>協働ポイント</span><strong>${formatNumber(member.points.collaboration)}</strong></div>
+          </div>
+
+          <div class="market-chart-block">
+            <div class="market-chart-heading"><span>スコア推移</span><strong>過去5回</strong></div>
+            ${renderMiniScoreChart(member)}
+          </div>
+
+          <button type="button" class="support-invest-button" data-member-id="${escapeHtml(member.id)}">応援投資する</button>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function renderScoreMarket() {
+  const marketData = getScoreMarketData();
+
+  renderScoreMarketSummary(marketData);
+  renderScoreMarketSortChips();
+  scoreMarketComment.textContent = getScoreMarketComment();
+  renderScoreMarketCards();
+}
+
 function renderPortfolio() {
   const rankedMembers = getRankedMembers();
   const maxScore = Math.max(...rankedMembers.map(calculateScore));
@@ -1533,6 +1781,46 @@ function toggleCareerSharePreview(button) {
   button.textContent = willOpen ? "共有プレビューを閉じる" : "共有プレビュー";
 }
 
+function getScoreTrendComment(member) {
+  const scoreChange = calculateScoreChange(member);
+
+  if (scoreChange > 0) {
+    return "直近ではスコアが上昇しており、周囲からの期待や信頼が高まっている傾向が見られます。";
+  }
+
+  if (scoreChange === 0) {
+    return "スコアは安定しており、継続的な貢献が蓄積されています。";
+  }
+
+  return "直近ではスコアがやや落ち着いています。次の協働機会や具体的なフィードバックが増えると、成長変化が見えやすくなりそうです。";
+}
+
+function renderModalScoreTrend(member) {
+  const score = calculateScore(member);
+  const scoreChange = calculateScoreChange(member);
+  const growthRate = calculateGrowthRate(member);
+  const changeClass = getScoreChangeClass(scoreChange);
+
+  return `
+    <section class="modal-section modal-score-trend-section">
+      <div class="modal-score-trend-heading">
+        <div>
+          <p class="eyebrow">Score Trend</p>
+          <h3>人財スコア推移</h3>
+        </div>
+        <span class="market-status-pill">${escapeHtml(getInvestmentStatus(member))}</span>
+      </div>
+      <div class="modal-score-trend-grid">
+        <div><span>現在人財スコア</span><strong>${formatNumber(score)}</strong></div>
+        <div class="${changeClass}"><span>前回比</span><strong>${formatScoreChange(scoreChange)}pt</strong></div>
+        <div class="${changeClass}"><span>成長変化率</span><strong>${formatGrowthRate(growthRate)}</strong></div>
+      </div>
+      ${renderMiniScoreChart(member, "人財スコア推移")}
+      <p class="score-trend-comment">${escapeHtml(getScoreTrendComment(member))}</p>
+    </section>
+  `;
+}
+
 function renderMemberModal(member) {
   const score = calculateScore(member);
   const feedbackItems = getFeedbackForMember(member.id);
@@ -1567,6 +1855,8 @@ function renderMemberModal(member) {
       <div><span>${pointLabels.thanks}</span><strong>${formatNumber(member.points.thanks)}</strong></div>
       <div><span>${pointLabels.collaboration}</span><strong>${formatNumber(member.points.collaboration)}</strong></div>
     </div>
+
+    ${renderModalScoreTrend(member)}
 
     ${renderGrowthReport(member)}
 
@@ -1649,6 +1939,7 @@ function renderApp() {
   renderStats();
   renderDashboard();
   renderPortfolio();
+  renderScoreMarket();
   renderTagFilters();
   renderOpportunityFilters();
   renderGrowthOpportunityMatching();
@@ -1696,7 +1987,11 @@ form.addEventListener("submit", (event) => {
     return;
   }
 
+  const previousScore = calculateScore(member);
+
   member.points[newItem.type] += newItem.points;
+  member.previousScore = previousScore;
+  updateMemberScoreHistory(member, calculateScore(member));
   timeline.unshift(newItem);
   saveAppData(true);
   renderApp();
@@ -1712,6 +2007,32 @@ form.addEventListener("submit", (event) => {
   form.reset();
   document.querySelector("#points").value = 10;
   formMessage.textContent = `${member.name} さんへ ${formatNumber(newItem.points)}pt を送りました。`;
+});
+
+scoreMarketSortList.addEventListener("click", (event) => {
+  const sortButton = event.target.closest(".market-sort-chip");
+
+  if (!sortButton) {
+    return;
+  }
+
+  marketSortKey = sortButton.dataset.marketSort;
+  renderScoreMarket();
+});
+
+scoreMarketList.addEventListener("click", (event) => {
+  const supportButton = event.target.closest(".support-invest-button");
+
+  if (!supportButton) {
+    return;
+  }
+
+  recipientSelect.value = supportButton.dataset.memberId;
+  document.querySelector("#point-type").value = "growth";
+  document.querySelector("#points").value = 10;
+  document.querySelector("#send-point").scrollIntoView({ behavior: "smooth", block: "start" });
+  recipientSelect.focus({ preventScroll: true });
+  formMessage.textContent = "送信先と成長期待ポイントを初期選択しました。具体的な理由を添えて応援投資してください。";
 });
 
 memberSearchInput.addEventListener("input", (event) => {

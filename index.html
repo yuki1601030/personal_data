@@ -16,6 +16,7 @@
       <div class="nav-links">
         <a href="#organization-dashboard">組織ダッシュボード</a>
         <a href="#portfolio">人財ポートフォリオ</a>
+        <a href="#score-market">人財スコアマーケット</a>
         <a href="#growth-matching">成長機会マッチング</a>
         <a href="#members">メンバー</a>
         <a href="#send-point">応援投資</a>
@@ -106,7 +107,34 @@
       </div>
       <div id="portfolio-list" class="portfolio-list" aria-live="polite"></div>
     </section>
+    <section id="score-market" class="section-block score-market-section" aria-labelledby="score-market-title">
+      <div class="section-heading score-market-heading">
+        <p class="eyebrow">Score Market</p>
+        <h2 id="score-market-title">人財スコアマーケット</h2>
+        <p>日々の応援投資やフィードバックによって、メンバーの信頼・成長期待・協働価値がどのように変化しているかを可視化します。</p>
+      </div>
 
+      <div class="market-note" role="note">
+        このセクションは、応援・成長・信頼資産・機会接続を考えるための練習用プロトタイプです。人を一面的に扱ったり断定評価したりするものではなく、多面的なフィードバックを増やすきっかけとして確認してください。
+      </div>
+
+      <div id="score-market-summary" class="score-market-summary-grid" aria-live="polite"></div>
+
+      <div class="score-market-toolbar" aria-label="人財スコアマーケットの表示順切り替え">
+        <p class="filter-label">表示順</p>
+        <div id="score-market-sort-list" class="market-sort-chip-list"></div>
+      </div>
+
+      <article class="market-comment-panel" aria-labelledby="market-comment-title">
+        <div>
+          <p class="eyebrow">Growth Market Comment</p>
+          <h3 id="market-comment-title">成長マーケットコメント</h3>
+        </div>
+        <p id="score-market-comment" aria-live="polite"></p>
+      </article>
+
+      <div id="score-market-list" class="score-market-grid" aria-live="polite"></div>
+    </section>
 
     <section id="growth-matching" class="section-block growth-matching-section" aria-labelledby="growth-matching-title">
       <div class="section-heading">
