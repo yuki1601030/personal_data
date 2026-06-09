@@ -164,6 +164,17 @@ const scoreMarketSortList = document.querySelector("#score-market-sort-list");
 const scoreMarketComment = document.querySelector("#score-market-comment");
 const scoreMarketList = document.querySelector("#score-market-list");
 const memberList = document.querySelector("#member-list");
+const addMemberButton = document.querySelector("#add-member-button");
+const managedMemberList = document.querySelector("#managed-member-list");
+const memberEditorModal = document.querySelector("#member-editor-modal");
+const memberEditorCard = document.querySelector(".member-editor-card");
+const memberEditorForm = document.querySelector("#member-editor-form");
+const memberEditorTitle = document.querySelector("#member-editor-title");
+const memberEditorErrors = document.querySelector("#member-editor-errors");
+const memberEditorModeInput = document.querySelector("#member-editor-mode");
+const memberEditorIdInput = document.querySelector("#member-editor-id");
+const memberEditorCloseButton = document.querySelector(".editor-modal-close");
+const memberEditorCancelButton = document.querySelector(".editor-cancel-button");
 const opportunityFilterList = document.querySelector("#opportunity-filter-list");
 const growthOpportunityList = document.querySelector("#growth-opportunity-list");
 const memberSearchInput = document.querySelector("#member-search");
@@ -246,6 +257,7 @@ let marketSortKey = "score";
 let selectedOpportunityCategory = allTagsLabel;
 let lastFocusedElement = null;
 let activeModalMemberId = null;
+let activeEditorMemberId = null;
 let storageStatusTimer = null;
 
 function cloneData(value) {
@@ -297,7 +309,6 @@ function isValidTimelineItem(item) {
 function isValidAppData(data) {
   return isPlainObject(data)
     && Array.isArray(data.members)
-    && data.members.length > 0
     && data.members.every(isValidMember)
     && Array.isArray(data.timeline)
     && data.timeline.every(isValidTimelineItem);
@@ -354,6 +365,14 @@ function setStorageStatus(message = storageStatusDefaultText, temporary = false)
   }
 }
 
+function saveData(temporaryStatus = false) {
+  return saveAppData(temporaryStatus);
+}
+
+function loadData() {
+  return loadAppData();
+}
+
 function saveAppData(temporaryStatus = false) {
   try {
     localStorage.setItem(storageKey, JSON.stringify(getAppData()));
@@ -406,8 +425,7 @@ function resetToSampleData() {
 
   setAppData(createSampleAppData());
   saveAppData(true);
-  renderMemberOptions();
-  renderApp();
+  renderAll();
 
   if (memberModal.classList.contains("is-open") && activeModalMemberId) {
     const member = getMemberById(activeModalMemberId);
@@ -471,7 +489,54 @@ function getMemberScoreHistory(member) {
 }
 
 function updateMemberScoreHistory(member, score) {
-  member.scoreHistory = [...getMemberScoreHistory(member), score].slice(-5);
+  const history = getMemberScoreHistory(member);
+
+  if (history.at(-1) === score) {
+    member.scoreHistory = history.slice(-5);
+    return;
+  }
+
+  member.scoreHistory = [...history, score].slice(-5);
+}
+
+function generateMemberId(name) {
+  const base = normalizeText(name)
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-+|-+$/g, "") || "sample-member";
+  const uniquePart = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+
+  return `${base}-${uniquePart}`;
+}
+
+function generateScoreHistory(currentScore) {
+  const baseScore = Math.max(0, Math.round(currentScore));
+  const offsets = [-6, -2, 3, -1, 0];
+
+  return offsets.map((offset, index) => Math.max(0, baseScore + offset + (index % 2 === 0 ? 1 : -1)));
+}
+
+function splitCommaValues(value, fallbackValues = []) {
+  const values = String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  return values.length > 0 ? values : fallbackValues;
+}
+
+function parsePointInput(value, label, errors) {
+  if (String(value).trim() === "") {
+    return 0;
+  }
+
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(numericValue) || numericValue < 0) {
+    errors.push(`${label}は0以上の数値で入力してください。`);
+    return 0;
+  }
+
+  return Math.round(numericValue);
 }
 
 function renderMiniScoreChart(member, label = "過去5回分の人財スコア推移") {
@@ -926,6 +991,11 @@ function getTopMemberByValue(getValue) {
 }
 
 function renderDashboardSpotlights() {
+  if (members.length === 0) {
+    dashboardSpotlights.innerHTML = `<p class="empty-member-message" role="status">まだメンバーが登録されていません。まずは架空メンバーを追加してみましょう。</p>`;
+    return;
+  }
+
   const spotlightDefinitions = [
     {
       reason: "総合スコアが最も高いメンバーとして、注目ポイントとして確認できます。",
@@ -974,14 +1044,37 @@ function renderDashboard() {
   renderDashboardSpotlights();
 }
 
-function renderMemberOptions() {
+function updateMemberSelectOptions() {
+  if (members.length === 0) {
+    recipientSelect.innerHTML = `<option value="">メンバーを追加してください</option>`;
+    recipientSelect.disabled = true;
+    return;
+  }
+
+  recipientSelect.disabled = false;
   recipientSelect.innerHTML = members
-    .map((member) => `<option value="${member.id}">${escapeHtml(member.name)} / ${escapeHtml(member.role)}</option>`)
+    .map((member) => `<option value="${escapeHtml(member.id)}">${escapeHtml(member.name)} / ${escapeHtml(member.role)}</option>`)
     .join("");
 }
 
+function renderMemberOptions() {
+  updateMemberSelectOptions();
+}
+
+function getAvailableStrengthTagFilters() {
+  const dynamicTags = members.flatMap((member) => member.strengthTags);
+
+  return [allTagsLabel, ...new Set([...strengthTagFilters.filter((tag) => tag !== allTagsLabel), ...dynamicTags])];
+}
+
 function renderTagFilters() {
-  tagFilterList.innerHTML = strengthTagFilters
+  const availableTags = getAvailableStrengthTagFilters();
+
+  if (!availableTags.includes(memberFilters.selectedTag)) {
+    memberFilters.selectedTag = allTagsLabel;
+  }
+
+  tagFilterList.innerHTML = availableTags
     .map((tag) => {
       const isSelected = memberFilters.selectedTag === tag;
 
@@ -1026,8 +1119,17 @@ function renderOpportunityMatchBadge(matchRate) {
   `;
 }
 
+function renderGrowthMatching() {
+  renderGrowthOpportunityMatching();
+}
+
 function renderGrowthOpportunityMatching() {
   const visibleOpportunities = getFilteredGrowthOpportunities();
+
+  if (members.length === 0) {
+    growthOpportunityList.innerHTML = `<p class="empty-member-message" role="status">まだメンバーが登録されていません。まずは架空メンバーを追加してみましょう。</p>`;
+    return;
+  }
 
   if (visibleOpportunities.length === 0) {
     growthOpportunityList.innerHTML = `<p class="empty-member-message" role="status">条件に一致する成長機会がありません</p>`;
@@ -1158,6 +1260,10 @@ function renderScoreMarketSortChips() {
 }
 
 function getScoreMarketComment() {
+  if (members.length === 0) {
+    return "まだメンバーが登録されていません。架空メンバーを追加すると、スコア傾向を確認できます。";
+  }
+
   const growthMembersCount = members.filter((member) => calculateScoreChange(member) > 0).length;
   const pointTotals = dashboardPointTypes.reduce((totals, type) => {
     totals[type] = members.reduce((sum, member) => sum + member.points[type], 0);
@@ -1188,6 +1294,11 @@ function getScoreMarketComment() {
 
 function renderScoreMarketCards() {
   const sortedMembers = getMarketSortedMembers();
+
+  if (sortedMembers.length === 0) {
+    scoreMarketList.innerHTML = `<p class="empty-member-message" role="status">まだメンバーが登録されていません。まずは架空メンバーを追加してみましょう。</p>`;
+    return;
+  }
 
   scoreMarketList.innerHTML = sortedMembers
     .map((member) => {
@@ -1248,7 +1359,13 @@ function renderScoreMarket() {
 
 function renderPortfolio() {
   const rankedMembers = getRankedMembers();
-  const maxScore = Math.max(...rankedMembers.map(calculateScore));
+
+  if (rankedMembers.length === 0) {
+    portfolioList.innerHTML = `<p class="empty-member-message" role="status">まだメンバーが登録されていません。まずは架空メンバーを追加してみましょう。</p>`;
+    return;
+  }
+
+  const maxScore = Math.max(...rankedMembers.map(calculateScore), 1);
 
   portfolioList.innerHTML = rankedMembers
     .map((member, index) => {
@@ -1298,7 +1415,7 @@ function renderMembers() {
   if (visibleMembers.length === 0) {
     memberList.innerHTML = `
       <div class="empty-member-message" role="status">
-        条件に一致するメンバーがいません
+        ${members.length === 0 ? "まだメンバーが登録されていません。まずは架空メンバーを追加してみましょう。" : "条件に一致するメンバーがいません"}
       </div>
     `;
     return;
@@ -1912,7 +2029,219 @@ function closeMemberModal() {
   }
 }
 
+
+function renderManagedMembers() {
+  if (!managedMemberList) {
+    return;
+  }
+
+  if (members.length === 0) {
+    managedMemberList.innerHTML = `
+      <div class="empty-member-message" role="status">
+        まだメンバーが登録されていません。まずは架空メンバーを追加してみましょう。
+      </div>
+    `;
+    return;
+  }
+
+  managedMemberList.innerHTML = members
+    .map((member) => `
+      <article class="managed-member-card">
+        <div>
+          <h3>${escapeHtml(member.name)}</h3>
+          <p>${escapeHtml(member.role)} / 得意領域：${escapeHtml(member.specialty)}</p>
+          <div class="managed-member-meta">
+            <span>総合スコア ${formatNumber(calculateScore(member))}pt</span>
+            <span>強み ${member.strengthTags.map(escapeHtml).join("、")}</span>
+          </div>
+        </div>
+        <div class="managed-member-actions">
+          <button type="button" class="edit-member-button" data-member-id="${escapeHtml(member.id)}">編集</button>
+          <button type="button" class="delete-member-button" data-member-id="${escapeHtml(member.id)}">削除</button>
+        </div>
+      </article>
+    `)
+    .join("");
+}
+
+function setMemberEditorErrors(errors) {
+  memberEditorErrors.hidden = errors.length === 0;
+  memberEditorErrors.innerHTML = errors.length === 0
+    ? ""
+    : `<p>入力内容を確認してください。</p><ul>${errors.map((error) => `<li>${escapeHtml(error)}</li>`).join("")}</ul>`;
+}
+
+function fillMemberEditorForm(member = null) {
+  memberEditorForm.reset();
+  setMemberEditorErrors([]);
+  memberEditorModeInput.value = member ? "edit" : "add";
+  memberEditorIdInput.value = member ? member.id : "";
+  memberEditorTitle.textContent = member ? "メンバーを編集" : "新しいメンバーを追加";
+  activeEditorMemberId = member ? member.id : null;
+
+  if (!member) {
+    return;
+  }
+
+  memberEditorForm.elements.name.value = member.name;
+  memberEditorForm.elements.role.value = member.role;
+  memberEditorForm.elements.specialty.value = member.specialty;
+  memberEditorForm.elements.strengthTags.value = member.strengthTags.join(", ");
+  memberEditorForm.elements.growthOpportunities.value = member.growthOpportunities.join(", ");
+  memberEditorForm.elements.trust.value = member.points.trust;
+  memberEditorForm.elements.growth.value = member.points.growth;
+  memberEditorForm.elements.thanks.value = member.points.thanks;
+  memberEditorForm.elements.collaboration.value = member.points.collaboration;
+}
+
+function openMemberEditor(memberId = null) {
+  const member = memberId ? getMemberById(memberId) : null;
+
+  if (memberId && !member) {
+    return;
+  }
+
+  lastFocusedElement = document.activeElement;
+  fillMemberEditorForm(member);
+  memberEditorModal.classList.add("is-open");
+  memberEditorModal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("modal-open");
+  memberEditorCard.focus();
+}
+
+function closeMemberEditor() {
+  if (!memberEditorModal.classList.contains("is-open")) {
+    return;
+  }
+
+  memberEditorModal.classList.remove("is-open");
+  memberEditorModal.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("modal-open");
+  activeEditorMemberId = null;
+
+  if (lastFocusedElement) {
+    lastFocusedElement.focus();
+  }
+}
+
+function getMemberFormPayload(formData, existingMember = null) {
+  const errors = [];
+  const name = String(formData.get("name") || "").trim();
+  const role = String(formData.get("role") || "").trim();
+
+  if (!name) {
+    errors.push("名前を入力してください。");
+  }
+
+  if (!role) {
+    errors.push("役割を入力してください。");
+  }
+
+  const points = {
+    trust: parsePointInput(formData.get("trust"), pointLabels.trust, errors),
+    growth: parsePointInput(formData.get("growth"), pointLabels.growth, errors),
+    thanks: parsePointInput(formData.get("thanks"), pointLabels.thanks, errors),
+    collaboration: parsePointInput(formData.get("collaboration"), pointLabels.collaboration, errors),
+  };
+
+  const specialty = String(formData.get("specialty") || "").trim() || "未設定";
+  const strengthTags = splitCommaValues(formData.get("strengthTags"), ["これから発見"]);
+  const growthOpportunities = splitCommaValues(formData.get("growthOpportunities"), ["小さな挑戦機会から発見"]);
+
+  return {
+    errors,
+    member: {
+      ...(existingMember || {}),
+      name,
+      role,
+      specialty,
+      strengthTags,
+      growthOpportunities,
+      points,
+    },
+  };
+}
+
+function createMemberFromPayload(payload) {
+  const currentScore = calculateScore(payload);
+
+  return normalizeMemberData({
+    ...payload,
+    id: generateMemberId(payload.name),
+    previousScore: Math.max(0, currentScore - 4),
+    scoreHistory: generateScoreHistory(currentScore),
+    createdAt: new Date().toISOString(),
+    status: "active",
+  });
+}
+
+function handleMemberEditorSubmit(event) {
+  event.preventDefault();
+
+  const formData = new FormData(memberEditorForm);
+  const mode = formData.get("mode");
+  const existingMember = mode === "edit" ? getMemberById(formData.get("memberId")) : null;
+  const { errors, member: payload } = getMemberFormPayload(formData, existingMember);
+
+  if (mode === "edit" && !existingMember) {
+    errors.push("編集対象のメンバーが見つかりませんでした。");
+  }
+
+  if (errors.length > 0) {
+    setMemberEditorErrors(errors);
+    return;
+  }
+
+  if (mode === "edit") {
+    const previousScore = calculateScore(existingMember);
+    Object.assign(existingMember, payload);
+    const currentScore = calculateScore(existingMember);
+
+    if (currentScore !== previousScore) {
+      existingMember.previousScore = previousScore;
+      updateMemberScoreHistory(existingMember, currentScore);
+    }
+  } else {
+    members.push(createMemberFromPayload(payload));
+  }
+
+  saveData(true);
+  renderAll();
+  closeMemberEditor();
+  formMessage.textContent = mode === "edit" ? "メンバー情報を更新しました。" : "新しい架空メンバーを追加しました。";
+}
+
+function deleteMember(memberId) {
+  const member = getMemberById(memberId);
+
+  if (!member) {
+    return;
+  }
+
+  const confirmed = window.confirm("この架空メンバーを削除します。関連するタイムライン履歴も削除されます。よろしいですか？");
+
+  if (!confirmed) {
+    return;
+  }
+
+  members = members.filter((item) => item.id !== memberId);
+  timeline = timeline.filter((item) => item.recipientId !== memberId);
+
+  if (activeModalMemberId === memberId) {
+    closeMemberModal();
+  }
+
+  saveData(true);
+  renderAll();
+  formMessage.textContent = `${member.name} さんを削除しました。`;
+}
+
 function renderTimeline() {
+  if (timeline.length === 0) {
+    timelineList.innerHTML = `<p class="empty-member-message" role="status">まだ応援投資タイムラインはありません。</p>`;
+    return;
+  }
+
   timelineList.innerHTML = timeline
     .map((item) => {
       const member = getMemberById(item.recipientId);
@@ -1935,16 +2264,26 @@ function renderTimeline() {
     .join("");
 }
 
-function renderApp() {
-  renderStats();
+function renderOrganizationDashboard() {
   renderDashboard();
+}
+
+function renderAll() {
+  updateMemberSelectOptions();
+  renderStats();
+  renderOrganizationDashboard();
   renderPortfolio();
   renderScoreMarket();
   renderTagFilters();
   renderOpportunityFilters();
-  renderGrowthOpportunityMatching();
+  renderGrowthMatching();
   renderMembers();
+  renderManagedMembers();
   renderTimeline();
+}
+
+function renderApp() {
+  renderAll();
 }
 
 function resetMemberFilters() {
@@ -1993,8 +2332,8 @@ form.addEventListener("submit", (event) => {
   member.previousScore = previousScore;
   updateMemberScoreHistory(member, calculateScore(member));
   timeline.unshift(newItem);
-  saveAppData(true);
-  renderApp();
+  saveData(true);
+  renderAll();
 
   if (memberModal.classList.contains("is-open") && activeModalMemberId) {
     const activeMember = getMemberById(activeModalMemberId);
@@ -2081,6 +2420,31 @@ memberList.addEventListener("click", (event) => {
   openMemberModal(detailButton.dataset.memberId);
 });
 
+addMemberButton.addEventListener("click", () => openMemberEditor());
+
+managedMemberList.addEventListener("click", (event) => {
+  const editButton = event.target.closest(".edit-member-button");
+  const deleteButton = event.target.closest(".delete-member-button");
+
+  if (editButton) {
+    openMemberEditor(editButton.dataset.memberId);
+    return;
+  }
+
+  if (deleteButton) {
+    deleteMember(deleteButton.dataset.memberId);
+  }
+});
+
+memberEditorForm.addEventListener("submit", handleMemberEditorSubmit);
+memberEditorCloseButton.addEventListener("click", closeMemberEditor);
+memberEditorCancelButton.addEventListener("click", closeMemberEditor);
+memberEditorModal.addEventListener("click", (event) => {
+  if (event.target === memberEditorModal) {
+    closeMemberEditor();
+  }
+});
+
 modalCloseButton.addEventListener("click", closeMemberModal);
 resetSampleDataButton.addEventListener("click", resetToSampleData);
 
@@ -2154,9 +2518,9 @@ memberModal.addEventListener("click", (event) => {
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     closeMemberModal();
+    closeMemberEditor();
   }
 });
 
-loadAppData();
-renderMemberOptions();
-renderApp();
+loadData();
+renderAll();
