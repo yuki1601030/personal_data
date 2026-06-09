@@ -2508,3 +2508,299 @@ body.modal-open {
     grid-template-columns: 1fr;
   }
 }
+
+/* 疑似ログイン・ユーザー別ポートフォリオ */
+.operator-panel {
+  display: grid;
+  grid-template-columns: auto minmax(220px, 320px) minmax(0, 1fr);
+  gap: 10px 14px;
+  align-items: center;
+  max-width: 900px;
+  margin-top: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 22px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+}
+
+.operator-panel label {
+  color: var(--white);
+}
+
+.operator-panel select {
+  border-color: rgba(255, 255, 255, 0.28);
+  color: var(--navy);
+}
+
+.operator-panel p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.my-portfolio-section {
+  padding: clamp(24px, 4vw, 34px);
+  border: 1px solid rgba(191, 219, 254, 0.95);
+  border-radius: 32px;
+  background:
+    radial-gradient(circle at 92% 10%, rgba(125, 211, 252, 0.22), transparent 28%),
+    linear-gradient(135deg, #ffffff 0%, #eef7ff 100%);
+  box-shadow: var(--shadow);
+}
+
+.my-portfolio-card,
+.my-portfolio-empty {
+  border: 1px solid rgba(219, 234, 254, 0.95);
+  border-radius: 26px;
+  padding: clamp(20px, 3vw, 28px);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 18px 38px rgba(11, 31, 58, 0.09);
+}
+
+.my-portfolio-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.my-portfolio-header h3,
+.my-portfolio-empty h3,
+.support-recipient-heading h3 {
+  margin-bottom: 4px;
+  color: var(--navy);
+}
+
+.my-portfolio-header p:not(.eyebrow),
+.my-portfolio-empty p,
+.support-recipient-heading p,
+.latest-support-reason {
+  margin-bottom: 0;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.my-portfolio-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.my-portfolio-summary div,
+.relationship-grid div,
+.support-breakdown-grid div {
+  border: 1px solid rgba(219, 234, 254, 0.92);
+  border-radius: 18px;
+  padding: 14px;
+  background: #ffffff;
+}
+
+.my-portfolio-summary span,
+.relationship-grid span,
+.support-breakdown-grid span,
+.support-ratio-label span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.my-portfolio-summary strong,
+.relationship-grid strong,
+.support-breakdown-grid strong,
+.support-recipient-heading strong,
+.support-ratio-label strong {
+  color: var(--navy);
+}
+
+.my-portfolio-summary strong {
+  display: block;
+  margin-top: 6px;
+  font-size: clamp(1.25rem, 3vw, 1.8rem);
+}
+
+.support-style-comment {
+  margin-bottom: 18px;
+  border-left: 5px solid var(--blue);
+  border-radius: 16px;
+  padding: 14px 16px;
+  color: var(--navy-soft);
+  background: var(--blue-light);
+  font-weight: 800;
+}
+
+.recent-support-block {
+  margin-bottom: 18px;
+}
+
+.recent-support-block h4,
+.relationship-recent h4 {
+  margin: 0 0 8px;
+  color: var(--navy);
+}
+
+.recent-support-block ul,
+.relationship-recent ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 1.2em;
+  color: var(--navy-soft);
+  font-weight: 700;
+}
+
+.support-recipient-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.support-recipient-card {
+  display: grid;
+  gap: 14px;
+  border: 1px solid rgba(191, 219, 254, 0.95);
+  border-radius: 22px;
+  padding: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+
+.support-recipient-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.support-recipient-heading strong {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: var(--blue-light);
+  font-size: 1.05rem;
+}
+
+.support-breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.support-ratio {
+  display: grid;
+  gap: 8px;
+}
+
+.support-ratio-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.support-ratio-bar,
+.timeline-filter-chip {
+  border-radius: 999px;
+}
+
+.support-ratio-bar {
+  overflow: hidden;
+  height: 11px;
+  background: rgba(100, 116, 139, 0.14);
+}
+
+.support-ratio-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--blue), var(--cyan));
+}
+
+.timeline-filter-panel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 14px;
+  border: 1px solid rgba(219, 234, 254, 0.9);
+  border-radius: 18px;
+  background: #f8fbff;
+}
+
+.timeline-filter-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.timeline-filter-chip {
+  margin-top: 0;
+  border: 1px solid rgba(31, 143, 255, 0.22);
+  padding: 8px 13px;
+  color: var(--navy-soft);
+  background: var(--white);
+  box-shadow: none;
+  font-size: 0.88rem;
+}
+
+.timeline-filter-chip.is-active,
+.timeline-filter-chip:hover {
+  color: var(--white);
+  background: linear-gradient(135deg, var(--blue), #2563eb);
+  box-shadow: 0 10px 18px rgba(31, 143, 255, 0.2);
+}
+
+.relationship-section {
+  border-top: 0;
+  border-radius: 20px;
+  padding: 18px;
+  background: linear-gradient(135deg, #ffffff 0%, #f4f9ff 100%);
+}
+
+.relationship-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.relationship-comment {
+  margin: 14px 0 0;
+  color: var(--navy-soft);
+  font-weight: 800;
+}
+
+@media (max-width: 900px) {
+  .operator-panel,
+  .my-portfolio-summary,
+  .support-recipient-list,
+  .relationship-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .operator-panel {
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 640px) {
+  .my-portfolio-section,
+  .my-portfolio-card,
+  .my-portfolio-empty,
+  .support-recipient-card,
+  .relationship-section {
+    border-radius: 20px;
+  }
+
+  .timeline-filter-panel,
+  .support-recipient-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .support-breakdown-grid {
+    grid-template-columns: 1fr;
+  }
+}

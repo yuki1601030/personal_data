@@ -93,6 +93,7 @@ const initialMembers = [
 
 const initialTimeline = [
   {
+    senderId: "aoi-mori",
     recipientId: "ren-kisaragi",
     type: "growth",
     points: 12,
@@ -100,6 +101,7 @@ const initialTimeline = [
     date: "2026-06-08 09:40",
   },
   {
+    senderId: "ren-kisaragi",
     recipientId: "haru-nanase",
     type: "thanks",
     points: 10,
@@ -107,6 +109,7 @@ const initialTimeline = [
     date: "2026-06-07 16:15",
   },
   {
+    senderId: "haru-nanase",
     recipientId: "mio-asahi",
     type: "collaboration",
     points: 8,
@@ -195,12 +198,22 @@ const memberModalContent = document.querySelector("#member-modal-content");
 const modalCloseButton = document.querySelector(".modal-close");
 const resetSampleDataButton = document.querySelector("#reset-sample-data");
 const storageStatus = document.querySelector("#storage-status");
+const operatorUserSelect = document.querySelector("#operator-user-select");
+const operatorUserStatus = document.querySelector("#operator-user-status");
+const myPortfolioContent = document.querySelector("#my-portfolio-content");
+const timelineFilterList = document.querySelector("#timeline-filter-list");
 
 const storageKey = "growthPointsPrototypeData";
 const storageStatusDefaultText = "ブラウザに保存済み";
 const allTagsLabel = "すべて";
 const opportunityCategories = ["すべて", "企画系", "分析系", "支援系", "顧客理解系"];
 const dashboardPointTypes = ["trust", "growth", "thanks", "collaboration"];
+const timelineFilters = {
+  all: "すべて",
+  sent: "自分が送った",
+  received: "自分が受け取った",
+};
+const defaultTimelineFilter = "all";
 const biasAlertLevelLabels = { info: "参考情報", caution: "注意", warning: "要確認" };
 const strengthTagFilters = [
   allTagsLabel,
@@ -248,6 +261,8 @@ const collaborationStyleByPoint = {
 
 let members = [];
 let timeline = [];
+let currentOperatorUserId = null;
+let activeTimelineFilter = defaultTimelineFilter;
 let memberFilters = {
   searchText: "",
   selectedTag: allTagsLabel,
@@ -268,6 +283,7 @@ function createSampleAppData() {
   return {
     members: cloneData(initialMembers),
     timeline: cloneData(initialTimeline),
+    currentOperatorUserId: initialMembers[0]?.id || null,
   };
 }
 
@@ -298,6 +314,7 @@ function isValidMember(member) {
 
 function isValidTimelineItem(item) {
   return isPlainObject(item)
+    && (item.senderId === undefined || typeof item.senderId === "string")
     && typeof item.recipientId === "string"
     && Object.prototype.hasOwnProperty.call(pointLabels, item.type)
     && Number.isFinite(item.points)
@@ -311,7 +328,8 @@ function isValidAppData(data) {
     && Array.isArray(data.members)
     && data.members.every(isValidMember)
     && Array.isArray(data.timeline)
-    && data.timeline.every(isValidTimelineItem);
+    && data.timeline.every(isValidTimelineItem)
+    && (data.currentOperatorUserId === undefined || data.currentOperatorUserId === null || typeof data.currentOperatorUserId === "string");
 }
 
 function normalizeMemberData(member) {
@@ -332,15 +350,49 @@ function normalizeMemberData(member) {
   return normalizedMember;
 }
 
+function getFallbackSenderId(recipientId) {
+  const fallbackMember = members.find((member) => member.id !== recipientId) || members[0];
+
+  return fallbackMember ? fallbackMember.id : null;
+}
+
+function normalizeTimelineItem(item) {
+  const normalizedItem = cloneData(item);
+
+  if (!normalizedItem.senderId) {
+    normalizedItem.senderId = getFallbackSenderId(normalizedItem.recipientId);
+  }
+
+  return normalizedItem;
+}
+
+function ensureOperatorUserId(preferredUserId = currentOperatorUserId) {
+  if (members.length === 0) {
+    currentOperatorUserId = null;
+    return currentOperatorUserId;
+  }
+
+  if (!preferredUserId || !getMemberById(preferredUserId)) {
+    currentOperatorUserId = members[0].id;
+    return currentOperatorUserId;
+  }
+
+  currentOperatorUserId = preferredUserId;
+  return currentOperatorUserId;
+}
+
 function setAppData(data) {
   members = cloneData(data.members).map(normalizeMemberData);
-  timeline = cloneData(data.timeline);
+  currentOperatorUserId = data.currentOperatorUserId || null;
+  ensureOperatorUserId(currentOperatorUserId);
+  timeline = cloneData(data.timeline).map(normalizeTimelineItem);
 }
 
 function getAppData() {
   return {
     members: cloneData(members),
     timeline: cloneData(timeline),
+    currentOperatorUserId,
   };
 }
 
@@ -403,7 +455,11 @@ function loadAppData() {
     }
 
     setAppData(parsedData);
-    setStorageStatus();
+    if (!parsedData.currentOperatorUserId || parsedData.timeline.some((item) => !item.senderId)) {
+      saveAppData();
+    } else {
+      setStorageStatus();
+    }
   } catch (error) {
     setAppData(sampleData);
     saveAppData();
@@ -740,6 +796,209 @@ function renderStats() {
   memberCount.textContent = formatNumber(members.length);
   totalPoints.textContent = formatNumber(total);
   recentInvestments.textContent = formatNumber(timeline.length);
+}
+
+function getCurrentOperatorUser() {
+  return currentOperatorUserId ? getMemberById(currentOperatorUserId) : null;
+}
+
+function renderOperatorUserSelect() {
+  ensureOperatorUserId();
+
+  if (!operatorUserSelect || !operatorUserStatus) {
+    return;
+  }
+
+  if (members.length === 0) {
+    operatorUserSelect.innerHTML = `<option value="">操作ユーザーなし</option>`;
+    operatorUserSelect.disabled = true;
+    operatorUserStatus.textContent = "操作ユーザーなし：架空メンバーを追加すると疑似ログインを選べます。";
+    return;
+  }
+
+  operatorUserSelect.disabled = false;
+  operatorUserSelect.innerHTML = members
+    .map((member) => `<option value="${escapeHtml(member.id)}">${escapeHtml(member.name)}</option>`)
+    .join("");
+  operatorUserSelect.value = currentOperatorUserId;
+
+  const operatorUser = getCurrentOperatorUser();
+  operatorUserStatus.textContent = operatorUser
+    ? `現在の操作ユーザー：${operatorUser.name} さん（練習用の疑似ログイン）`
+    : "操作ユーザーを選択してください。";
+}
+
+function getTimelineSender(item) {
+  return item.senderId ? getMemberById(item.senderId) : null;
+}
+
+function getTimelineRecipient(item) {
+  return getMemberById(item.recipientId);
+}
+
+function getTimelineTotal(items) {
+  return items.reduce((sum, item) => sum + item.points, 0);
+}
+
+function getPointBreakdown(items) {
+  return dashboardPointTypes.reduce((totals, type) => {
+    totals[type] = items
+      .filter((item) => item.type === type)
+      .reduce((sum, item) => sum + item.points, 0);
+    return totals;
+  }, {});
+}
+
+function getTopPointType(items) {
+  const breakdown = getPointBreakdown(items);
+
+  return dashboardPointTypes.reduce((topType, type) => {
+    if (breakdown[type] > breakdown[topType]) {
+      return type;
+    }
+
+    return topType;
+  }, dashboardPointTypes[0]);
+}
+
+function getSupportStyleComment(items) {
+  if (items.length === 0) {
+    return "まだ応援投資の履歴がありません。気になる架空メンバーにポイントを送ってみましょう。";
+  }
+
+  const topPointType = getTopPointType(items);
+  const comments = {
+    growth: "このユーザーは、今後の挑戦や伸びしろに注目して応援投資する傾向が見られます。",
+    thanks: "このユーザーは、日々の支援や貢献に感謝を伝える応援が多い傾向です。",
+    trust: "このユーザーは、安心して任せられる関係性を重視して応援する傾向があります。",
+    collaboration: "このユーザーは、また一緒に働きたい相手に応援投資する傾向が見られます。",
+  };
+
+  return comments[topPointType];
+}
+
+function renderMyPortfolio() {
+  if (!myPortfolioContent) {
+    return;
+  }
+
+  const operatorUser = getCurrentOperatorUser();
+
+  if (!operatorUser) {
+    myPortfolioContent.innerHTML = `
+      <article class="my-portfolio-empty" role="status">
+        <h3>操作ユーザーなし</h3>
+        <p>架空メンバーを追加し、操作ユーザーを選ぶと自分の応援ポートフォリオを確認できます。</p>
+      </article>
+    `;
+    return;
+  }
+
+  const sentItems = timeline.filter((item) => item.senderId === operatorUser.id && getTimelineRecipient(item));
+  const totalSentPoints = getTimelineTotal(sentItems);
+  const supportedMemberIds = [...new Set(sentItems.map((item) => item.recipientId))];
+  const topPointType = sentItems.length > 0 ? getTopPointType(sentItems) : null;
+  const recentItems = sentItems.slice(0, 3);
+
+  const summaryCards = [
+    ["自分が送った総ポイント", `${formatNumber(totalSentPoints)}pt`],
+    ["応援したメンバー数", `${formatNumber(supportedMemberIds.length)}人`],
+    ["最も多く送ったポイント種類", topPointType ? pointLabels[topPointType] : "-"],
+  ];
+
+  const recipientCards = supportedMemberIds
+    .map((recipientId) => {
+      const member = getMemberById(recipientId);
+      const memberItems = sentItems.filter((item) => item.recipientId === recipientId);
+      const memberTotal = getTimelineTotal(memberItems);
+      const breakdown = getPointBreakdown(memberItems);
+      const latestItem = memberItems[0];
+      const ratio = totalSentPoints > 0 ? Math.round((memberTotal / totalSentPoints) * 100) : 0;
+
+      return `
+        <article class="support-recipient-card">
+          <div class="support-recipient-heading">
+            <div>
+              <h3>${escapeHtml(member.name)}</h3>
+              <p>${escapeHtml(member.role)}</p>
+            </div>
+            <strong>${formatNumber(memberTotal)}pt</strong>
+          </div>
+          <div class="support-breakdown-grid">
+            ${dashboardPointTypes.map((type) => `<div><span>${escapeHtml(pointLabels[type])}</span><strong>${formatNumber(breakdown[type])}</strong></div>`).join("")}
+          </div>
+          <p class="latest-support-reason">最新の応援理由：${escapeHtml(latestItem ? latestItem.reason : "-")}</p>
+          <div class="support-ratio" aria-label="${escapeHtml(member.name)}さんへの応援比率 ${ratio}%">
+            <div class="support-ratio-label"><span>応援比率</span><strong>${ratio}%</strong></div>
+            <div class="support-ratio-bar" aria-hidden="true"><span style="width: ${ratio}%"></span></div>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+
+  myPortfolioContent.innerHTML = `
+    <article class="my-portfolio-card">
+      <div class="my-portfolio-header">
+        <div>
+          <p class="eyebrow">Practice User Portfolio</p>
+          <h3>${escapeHtml(operatorUser.name)} さんの応援ポートフォリオ</h3>
+          <p>本物の評価ではなく、架空データによる関係性の可視化です。</p>
+        </div>
+      </div>
+      <div class="my-portfolio-summary">
+        ${summaryCards.map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("")}
+      </div>
+      <div class="support-style-comment">${escapeHtml(getSupportStyleComment(sentItems))}</div>
+      <div class="recent-support-block">
+        <h4>最近の応援投資</h4>
+        ${recentItems.length > 0
+          ? `<ul>${recentItems.map((item) => {
+              const recipient = getTimelineRecipient(item);
+              return `<li>${escapeHtml(recipient ? recipient.name : "架空メンバー")}｜${escapeHtml(pointLabels[item.type])} +${formatNumber(item.points)}｜${escapeHtml(item.date)}</li>`;
+            }).join("")}</ul>`
+          : `<p class="empty-feedback">まだ最近の応援投資はありません。</p>`}
+      </div>
+      <div class="support-recipient-list">
+        ${recipientCards || `<p class="empty-feedback">応援先メンバー別のポイントはまだありません。</p>`}
+      </div>
+    </article>
+  `;
+}
+
+function renderTimelineFilters() {
+  if (!timelineFilterList) {
+    return;
+  }
+
+  if (!Object.prototype.hasOwnProperty.call(timelineFilters, activeTimelineFilter)) {
+    activeTimelineFilter = defaultTimelineFilter;
+  }
+
+  timelineFilterList.innerHTML = Object.entries(timelineFilters)
+    .map(([key, label]) => {
+      const isActive = key === activeTimelineFilter;
+      return `<button type="button" class="timeline-filter-chip${isActive ? " is-active" : ""}" data-timeline-filter="${escapeHtml(key)}" aria-pressed="${isActive}">${escapeHtml(label)}</button>`;
+    })
+    .join("");
+}
+
+function getFilteredTimeline() {
+  const operatorUser = getCurrentOperatorUser();
+
+  if (!operatorUser || activeTimelineFilter === "all") {
+    return timeline;
+  }
+
+  if (activeTimelineFilter === "sent") {
+    return timeline.filter((item) => item.senderId === operatorUser.id);
+  }
+
+  if (activeTimelineFilter === "received") {
+    return timeline.filter((item) => item.recipientId === operatorUser.id);
+  }
+
+  return timeline;
 }
 
 function getDashboardTotals() {
@@ -1938,6 +2197,73 @@ function renderModalScoreTrend(member) {
   `;
 }
 
+
+function getRelationshipComment(operatorUser, member, sentTotal, receivedTotal) {
+  if (!operatorUser) {
+    return "操作ユーザーを選ぶと、このメンバーとの関係性を確認できます。";
+  }
+
+  if (operatorUser.id === member.id) {
+    return "これは現在の操作ユーザー自身のプロフィールです。";
+  }
+
+  if (sentTotal > 0 && receivedTotal > 0) {
+    return "このメンバーとの双方向の応援投資が蓄積されています。";
+  }
+
+  if (sentTotal > 0) {
+    return "このメンバーへの応援投資が蓄積されています。";
+  }
+
+  if (receivedTotal > 0) {
+    return "このメンバーからのフィードバックが届いています。";
+  }
+
+  return "まだポイントのやり取りは少なめです。今後の協働で具体的なフィードバックを蓄積していきましょう。";
+}
+
+function renderRelationshipSection(member) {
+  const operatorUser = getCurrentOperatorUser();
+
+  if (!operatorUser) {
+    return `
+      <section class="modal-section relationship-section">
+        <h3>このユーザーとの関係</h3>
+        <p class="relationship-comment">操作ユーザーを選ぶと、このメンバーとの関係性を確認できます。</p>
+      </section>
+    `;
+  }
+
+  const sentItems = timeline.filter((item) => item.senderId === operatorUser.id && item.recipientId === member.id);
+  const receivedItems = timeline.filter((item) => item.senderId === member.id && item.recipientId === operatorUser.id);
+  const sentTotal = getTimelineTotal(sentItems);
+  const receivedTotal = getTimelineTotal(receivedItems);
+  const recentInteractions = [...sentItems, ...receivedItems]
+    .sort((first, second) => timeline.indexOf(first) - timeline.indexOf(second))
+    .slice(0, 3);
+
+  return `
+    <section class="modal-section relationship-section">
+      <h3>このユーザーとの関係</h3>
+      <div class="relationship-grid">
+        <div><span>自分がこのメンバーに送ったポイント合計</span><strong>${formatNumber(sentTotal)}pt</strong></div>
+        <div><span>このメンバーから自分が受け取ったポイント合計</span><strong>${formatNumber(receivedTotal)}pt</strong></div>
+      </div>
+      <div class="relationship-recent">
+        <h4>最近のやり取り</h4>
+        ${recentInteractions.length > 0
+          ? `<ul>${recentInteractions.map((item) => {
+              const sender = getTimelineSender(item);
+              const recipient = getTimelineRecipient(item);
+              return `<li>${escapeHtml(sender ? sender.name : "架空ユーザー")} → ${escapeHtml(recipient ? recipient.name : "架空メンバー")}｜${escapeHtml(pointLabels[item.type])} +${formatNumber(item.points)}｜${escapeHtml(item.date)}</li>`;
+            }).join("")}</ul>`
+          : `<p class="empty-feedback">最近のやり取りはまだありません。</p>`}
+      </div>
+      <p class="relationship-comment">${escapeHtml(getRelationshipComment(operatorUser, member, sentTotal, receivedTotal))}</p>
+    </section>
+  `;
+}
+
 function renderMemberModal(member) {
   const score = calculateScore(member);
   const feedbackItems = getFeedbackForMember(member.id);
@@ -1974,6 +2300,8 @@ function renderMemberModal(member) {
     </div>
 
     ${renderModalScoreTrend(member)}
+
+    ${renderRelationshipSection(member)}
 
     ${renderGrowthReport(member)}
 
@@ -2205,6 +2533,7 @@ function handleMemberEditorSubmit(event) {
     members.push(createMemberFromPayload(payload));
   }
 
+  ensureOperatorUserId();
   saveData(true);
   renderAll();
   closeMemberEditor();
@@ -2225,7 +2554,8 @@ function deleteMember(memberId) {
   }
 
   members = members.filter((item) => item.id !== memberId);
-  timeline = timeline.filter((item) => item.recipientId !== memberId);
+  timeline = timeline.filter((item) => item.recipientId !== memberId && item.senderId !== memberId);
+  ensureOperatorUserId();
 
   if (activeModalMemberId === memberId) {
     closeMemberModal();
@@ -2237,15 +2567,26 @@ function deleteMember(memberId) {
 }
 
 function renderTimeline() {
+  renderTimelineFilters();
+
+  const visibleTimeline = getFilteredTimeline();
+
   if (timeline.length === 0) {
     timelineList.innerHTML = `<p class="empty-member-message" role="status">まだ応援投資タイムラインはありません。</p>`;
     return;
   }
 
-  timelineList.innerHTML = timeline
+  if (visibleTimeline.length === 0) {
+    timelineList.innerHTML = `<p class="empty-member-message" role="status">選択中のフィルターに一致する応援投資はありません。</p>`;
+    return;
+  }
+
+  timelineList.innerHTML = visibleTimeline
     .map((item) => {
-      const member = getMemberById(item.recipientId);
-      const recipientName = escapeHtml(member ? member.name : "架空メンバー");
+      const sender = getTimelineSender(item);
+      const recipient = getTimelineRecipient(item);
+      const senderName = escapeHtml(sender ? sender.name : "架空ユーザー");
+      const recipientName = escapeHtml(recipient ? recipient.name : "架空メンバー");
       const pointName = escapeHtml(pointLabels[item.type]);
       const reason = escapeHtml(item.reason);
       const date = escapeHtml(item.date);
@@ -2254,7 +2595,7 @@ function renderTimeline() {
         <article class="timeline-item">
           <div class="timeline-icon" aria-hidden="true">＋</div>
           <div>
-            <p class="timeline-title">${recipientName} さんへ ${pointName} を ${formatNumber(item.points)}pt 応援投資</p>
+            <p class="timeline-title">${senderName} → ${recipientName}｜${pointName} +${formatNumber(item.points)}</p>
             <p class="timeline-meta">${date}</p>
             <p class="timeline-reason">${reason}</p>
           </div>
@@ -2263,12 +2604,13 @@ function renderTimeline() {
     })
     .join("");
 }
-
 function renderOrganizationDashboard() {
   renderDashboard();
 }
 
 function renderAll() {
+  ensureOperatorUserId();
+  renderOperatorUserSelect();
   updateMemberSelectOptions();
   renderStats();
   renderOrganizationDashboard();
@@ -2279,6 +2621,7 @@ function renderAll() {
   renderGrowthMatching();
   renderMembers();
   renderManagedMembers();
+  renderMyPortfolio();
   renderTimeline();
 }
 
@@ -2300,6 +2643,7 @@ function resetMemberFilters() {
 
 function createTimelineItem(formData) {
   return {
+    senderId: currentOperatorUserId,
     recipientId: formData.get("recipient"),
     type: formData.get("pointType"),
     points: Number(formData.get("points")),
@@ -2314,8 +2658,37 @@ function createTimelineItem(formData) {
   };
 }
 
+if (operatorUserSelect) {
+  operatorUserSelect.addEventListener("change", (event) => {
+    currentOperatorUserId = event.target.value || null;
+    ensureOperatorUserId(currentOperatorUserId);
+    saveData(true);
+    renderAll();
+  });
+}
+
+if (timelineFilterList) {
+  timelineFilterList.addEventListener("click", (event) => {
+    const filterButton = event.target.closest(".timeline-filter-chip");
+
+    if (!filterButton) {
+      return;
+    }
+
+    activeTimelineFilter = filterButton.dataset.timelineFilter;
+    renderTimeline();
+  });
+}
+
 form.addEventListener("submit", (event) => {
   event.preventDefault();
+
+  const operatorUser = getCurrentOperatorUser();
+
+  if (!operatorUser) {
+    formMessage.textContent = "操作ユーザーを選択してください。";
+    return;
+  }
 
   const formData = new FormData(form);
   const newItem = createTimelineItem(formData);
@@ -2324,6 +2697,15 @@ form.addEventListener("submit", (event) => {
   if (!member || !newItem.type || newItem.points < 1 || !newItem.reason) {
     formMessage.textContent = "入力内容を確認してください。";
     return;
+  }
+
+  if (operatorUser.id === member.id) {
+    const confirmed = window.confirm("自分自身へのポイント送信です。練習用として記録しますか？");
+
+    if (!confirmed) {
+      formMessage.textContent = "自分自身へのポイント送信をキャンセルしました。";
+      return;
+    }
   }
 
   const previousScore = calculateScore(member);
@@ -2345,7 +2727,7 @@ form.addEventListener("submit", (event) => {
 
   form.reset();
   document.querySelector("#points").value = 10;
-  formMessage.textContent = `${member.name} さんへ ${formatNumber(newItem.points)}pt を送りました。`;
+  formMessage.textContent = `${operatorUser.name} さんから ${member.name} さんへ ${formatNumber(newItem.points)}pt を送りました。`;
 });
 
 scoreMarketSortList.addEventListener("click", (event) => {
