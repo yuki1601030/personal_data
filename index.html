@@ -65,6 +65,37 @@
         <h2>メンバー一覧</h2>
         <p>架空のメンバーの強みとポイントをカードで確認できます。</p>
       </div>
+
+      <div class="member-controls" aria-label="メンバー一覧の検索と絞り込み">
+        <div class="control-grid">
+          <label class="control-field" for="member-search">
+            <span>メンバー検索</span>
+            <input id="member-search" type="search" placeholder="名前・役割・得意領域・強みタグで検索">
+          </label>
+
+          <label class="control-field" for="member-sort">
+            <span>並び替え</span>
+            <select id="member-sort">
+              <option value="score">総合スコアが高い順</option>
+              <option value="growth">成長期待ポイントが高い順</option>
+              <option value="trust">信頼ポイントが高い順</option>
+              <option value="thanks">感謝ポイントが高い順</option>
+              <option value="collaboration">協働ポイントが高い順</option>
+              <option value="change">前回比が高い順</option>
+            </select>
+          </label>
+
+          <button id="reset-member-filters" class="filter-reset-button" type="button">条件をリセット</button>
+        </div>
+
+        <div class="tag-filter-panel" aria-label="強みタグで絞り込み">
+          <p class="filter-label">強みタグ</p>
+          <div id="tag-filter-list" class="tag-filter-list"></div>
+        </div>
+
+        <div id="member-filter-status" class="filter-status" aria-live="polite"></div>
+      </div>
+
       <div id="member-list" class="member-grid" aria-live="polite"></div>
     </section>
 
