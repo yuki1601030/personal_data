@@ -84,6 +84,11 @@ const initialTimeline = [
 
 const portfolioList = document.querySelector("#portfolio-list");
 const memberList = document.querySelector("#member-list");
+const memberSearchInput = document.querySelector("#member-search");
+const memberSortSelect = document.querySelector("#member-sort");
+const tagFilterList = document.querySelector("#tag-filter-list");
+const memberFilterStatus = document.querySelector("#member-filter-status");
+const resetMemberFiltersButton = document.querySelector("#reset-member-filters");
 const recipientSelect = document.querySelector("#recipient");
 const timelineList = document.querySelector("#timeline-list");
 const form = document.querySelector("#point-form");
@@ -100,9 +105,34 @@ const storageStatus = document.querySelector("#storage-status");
 
 const storageKey = "growthPointsPrototypeData";
 const storageStatusDefaultText = "ブラウザに保存済み";
+const allTagsLabel = "すべて";
+const strengthTagFilters = [
+  allTagsLabel,
+  "巻き込み力",
+  "課題整理",
+  "顧客理解",
+  "実行推進",
+  "データ分析",
+  "チーム支援",
+  "アイデア創出",
+  "調整力",
+];
+const sortOptions = {
+  score: { label: "総合スコアが高い順", getValue: calculateScore },
+  growth: { label: "成長期待ポイントが高い順", getValue: (member) => member.points.growth },
+  trust: { label: "信頼ポイントが高い順", getValue: (member) => member.points.trust },
+  thanks: { label: "感謝ポイントが高い順", getValue: (member) => member.points.thanks },
+  collaboration: { label: "協働ポイントが高い順", getValue: (member) => member.points.collaboration },
+  change: { label: "前回比が高い順", getValue: calculateScoreChange },
+};
 
 let members = [];
 let timeline = [];
+let memberFilters = {
+  searchText: "",
+  selectedTag: allTagsLabel,
+  sortKey: "score",
+};
 let lastFocusedElement = null;
 let activeModalMemberId = null;
 let storageStatusTimer = null;
@@ -328,6 +358,42 @@ function getRankedMembers() {
   return [...members].sort((first, second) => calculateScore(second) - calculateScore(first));
 }
 
+function normalizeText(value) {
+  return String(value).trim().toLocaleLowerCase("ja-JP");
+}
+
+function getMemberSearchText(member) {
+  return normalizeText([
+    member.name,
+    member.role,
+    member.specialty,
+    ...member.strengthTags,
+  ].join(" "));
+}
+
+function getFilteredAndSortedMembers() {
+  const normalizedSearchText = normalizeText(memberFilters.searchText);
+  const selectedTag = memberFilters.selectedTag;
+  const sortOption = sortOptions[memberFilters.sortKey] || sortOptions.score;
+
+  return members
+    .filter((member) => {
+      const matchesSearch = !normalizedSearchText || getMemberSearchText(member).includes(normalizedSearchText);
+      const matchesTag = selectedTag === allTagsLabel || member.strengthTags.includes(selectedTag);
+
+      return matchesSearch && matchesTag;
+    })
+    .sort((first, second) => {
+      const sortDifference = sortOption.getValue(second) - sortOption.getValue(first);
+
+      if (sortDifference !== 0) {
+        return sortDifference;
+      }
+
+      return calculateScore(second) - calculateScore(first);
+    });
+}
+
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (character) => {
     const entities = {
@@ -352,8 +418,38 @@ function renderStats() {
 
 function renderMemberOptions() {
   recipientSelect.innerHTML = members
-    .map((member) => `<option value="${member.id}">${member.name} / ${member.role}</option>`)
+    .map((member) => `<option value="${member.id}">${escapeHtml(member.name)} / ${escapeHtml(member.role)}</option>`)
     .join("");
+}
+
+function renderTagFilters() {
+  tagFilterList.innerHTML = strengthTagFilters
+    .map((tag) => {
+      const isSelected = memberFilters.selectedTag === tag;
+
+      return `
+        <button
+          type="button"
+          class="tag-filter-button${isSelected ? " is-active" : ""}"
+          data-tag="${escapeHtml(tag)}"
+          aria-pressed="${isSelected}"
+        >${escapeHtml(tag)}</button>
+      `;
+    })
+    .join("");
+}
+
+function renderMemberFilterStatus(displayedCount) {
+  const searchLabel = memberFilters.searchText ? `検索：${escapeHtml(memberFilters.searchText)}` : "検索：なし";
+  const tagLabel = `タグ：${escapeHtml(memberFilters.selectedTag)}`;
+  const sortLabel = `並び替え：${escapeHtml((sortOptions[memberFilters.sortKey] || sortOptions.score).label)}`;
+
+  memberFilterStatus.innerHTML = `
+    <span>表示中：${formatNumber(displayedCount)}人 / 全${formatNumber(members.length)}人</span>
+    <span>${searchLabel}</span>
+    <span>${tagLabel}</span>
+    <span>${sortLabel}</span>
+  `;
 }
 
 function renderPortfolio() {
@@ -401,7 +497,20 @@ function renderPortfolio() {
 }
 
 function renderMembers() {
-  memberList.innerHTML = members
+  const visibleMembers = getFilteredAndSortedMembers();
+
+  renderMemberFilterStatus(visibleMembers.length);
+
+  if (visibleMembers.length === 0) {
+    memberList.innerHTML = `
+      <div class="empty-member-message" role="status">
+        条件に一致するメンバーがいません
+      </div>
+    `;
+    return;
+  }
+
+  memberList.innerHTML = visibleMembers
     .map((member) => {
       const score = calculateScore(member);
       const initials = escapeHtml(member.name.replace(" ", "").slice(0, 2));
@@ -582,8 +691,21 @@ function renderTimeline() {
 function renderApp() {
   renderStats();
   renderPortfolio();
+  renderTagFilters();
   renderMembers();
   renderTimeline();
+}
+
+function resetMemberFilters() {
+  memberFilters = {
+    searchText: "",
+    selectedTag: allTagsLabel,
+    sortKey: "score",
+  };
+  memberSearchInput.value = memberFilters.searchText;
+  memberSortSelect.value = memberFilters.sortKey;
+  renderTagFilters();
+  renderMembers();
 }
 
 function createTimelineItem(formData) {
@@ -627,6 +749,30 @@ form.addEventListener("submit", (event) => {
   document.querySelector("#points").value = 10;
   formMessage.textContent = `${member.name} さんへ ${formatNumber(newItem.points)}pt を送りました。`;
 });
+
+memberSearchInput.addEventListener("input", (event) => {
+  memberFilters.searchText = event.target.value;
+  renderMembers();
+});
+
+memberSortSelect.addEventListener("change", (event) => {
+  memberFilters.sortKey = event.target.value;
+  renderMembers();
+});
+
+tagFilterList.addEventListener("click", (event) => {
+  const tagButton = event.target.closest(".tag-filter-button");
+
+  if (!tagButton) {
+    return;
+  }
+
+  memberFilters.selectedTag = tagButton.dataset.tag;
+  renderTagFilters();
+  renderMembers();
+});
+
+resetMemberFiltersButton.addEventListener("click", resetMemberFilters);
 
 memberList.addEventListener("click", (event) => {
   const detailButton = event.target.closest(".detail-button");

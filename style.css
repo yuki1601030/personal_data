@@ -323,6 +323,101 @@ main {
   background: linear-gradient(90deg, var(--blue), var(--cyan));
 }
 
+.member-controls {
+  display: grid;
+  gap: 18px;
+  margin: -4px 0 24px;
+  border: 1px solid rgba(219, 234, 254, 0.9);
+  border-radius: 24px;
+  padding: 20px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+  box-shadow: 0 14px 32px rgba(11, 31, 58, 0.08);
+}
+
+.control-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.5fr) minmax(220px, 1fr) auto;
+  gap: 14px;
+  align-items: end;
+}
+
+.control-field {
+  display: grid;
+  gap: 8px;
+}
+
+.control-field span,
+.filter-label {
+  margin: 0;
+  color: var(--navy);
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.filter-reset-button {
+  min-height: 52px;
+  margin-top: 0;
+  white-space: nowrap;
+}
+
+.tag-filter-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.tag-filter-list,
+.filter-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag-filter-button {
+  margin-top: 0;
+  border: 1px solid rgba(31, 143, 255, 0.18);
+  border-radius: 999px;
+  padding: 8px 12px;
+  color: var(--navy-soft);
+  background: var(--white);
+  box-shadow: none;
+  font-size: 0.86rem;
+  line-height: 1.2;
+}
+
+.tag-filter-button:hover,
+.tag-filter-button.is-active {
+  color: var(--white);
+  background: linear-gradient(135deg, var(--blue), #2563eb);
+  box-shadow: 0 10px 18px rgba(31, 143, 255, 0.2);
+}
+
+.filter-status {
+  border-top: 1px solid rgba(219, 234, 254, 0.9);
+  padding-top: 14px;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.filter-status span {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 5px 10px;
+  background: var(--blue-light);
+  font-weight: 800;
+}
+
+.empty-member-message {
+  grid-column: 1 / -1;
+  border: 1px dashed rgba(31, 143, 255, 0.32);
+  border-radius: 22px;
+  padding: 32px 20px;
+  color: var(--navy-soft);
+  background: #f8fbff;
+  text-align: center;
+  font-weight: 800;
+}
+
 .member-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -616,7 +711,8 @@ footer p {
 @media (max-width: 900px) {
   .stats-grid,
   .member-grid,
-  .two-column {
+  .two-column,
+  .control-grid {
     grid-template-columns: 1fr;
   }
 
@@ -625,7 +721,8 @@ footer p {
     flex-direction: column;
   }
 
-  .reset-button {
+  .reset-button,
+  .filter-reset-button {
     width: 100%;
   }
 
