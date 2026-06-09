@@ -18,6 +18,7 @@
         <a href="#portfolio">人財ポートフォリオ</a>
         <a href="#score-market">人財スコアマーケット</a>
         <a href="#growth-matching">成長機会マッチング</a>
+        <a href="#member-management">メンバー管理</a>
         <a href="#members">メンバー</a>
         <a href="#send-point">応援投資</a>
         <a href="#timeline">タイムライン</a>
@@ -155,6 +156,29 @@
       <div id="growth-opportunity-list" class="growth-opportunity-grid" aria-live="polite"></div>
     </section>
 
+
+    <section id="member-management" class="section-block member-management-section" aria-labelledby="member-management-title">
+      <div class="section-heading member-management-heading">
+        <p class="eyebrow">Member Management</p>
+        <h2 id="member-management-title">メンバー管理</h2>
+        <p>画面上で架空メンバーを追加・編集・削除し、プロトタイプを少しずつ育てられます。</p>
+      </div>
+
+      <div class="sample-data-warning" role="note">
+        このアプリは練習用プロトタイプです。実在する会社名・社員名・社内情報・個人情報は入力しないでください。架空のデータで操作してください。
+      </div>
+
+      <div class="member-management-toolbar">
+        <div>
+          <h3>架空メンバーの簡易一覧</h3>
+          <p>追加・編集・削除すると、各ダッシュボードとブラウザ保存へ自動反映されます。</p>
+        </div>
+        <button id="add-member-button" class="add-member-button" type="button">新しいメンバーを追加</button>
+      </div>
+
+      <div id="managed-member-list" class="managed-member-list" aria-live="polite"></div>
+    </section>
+
     <section id="members" class="section-block">
       <div class="section-heading">
         <p class="eyebrow">Members</p>
@@ -241,7 +265,7 @@
         <p class="eyebrow">Browser Save</p>
         <h2 id="storage-panel-title">ブラウザ保存設定</h2>
         <p id="storage-status" class="storage-status" role="status" aria-live="polite">ブラウザに保存済み</p>
-        <p class="prototype-warning">このアプリは練習用プロトタイプです。実在する会社名・社員名・社内情報・個人情報は入力しないでください。</p>
+        <p class="prototype-warning">このアプリは練習用プロトタイプです。実在する会社名・社員名・社内情報・個人情報は入力しないでください。架空のデータで操作してください。</p>
       </div>
       <button id="reset-sample-data" class="reset-button" type="button">サンプルデータに戻す</button>
     </section>
@@ -257,6 +281,58 @@
       <div id="member-modal-content"></div>
     </article>
   </div>
+
+  <div id="member-editor-modal" class="modal-overlay" aria-hidden="true">
+    <article class="member-editor-card" role="dialog" aria-modal="true" aria-labelledby="member-editor-title" tabindex="-1">
+      <button type="button" class="modal-close editor-modal-close" aria-label="メンバー入力フォームを閉じる">×</button>
+      <div class="member-editor-heading">
+        <p class="eyebrow">Member Form</p>
+        <h2 id="member-editor-title">新しいメンバーを追加</h2>
+        <p>すべて架空のサンプル情報だけを入力してください。</p>
+      </div>
+      <form id="member-editor-form" class="member-editor-form" novalidate>
+        <input id="member-editor-mode" name="mode" type="hidden" value="add">
+        <input id="member-editor-id" name="memberId" type="hidden" value="">
+        <div id="member-editor-errors" class="form-error-summary" role="alert" aria-live="assertive" hidden></div>
+
+        <div class="member-editor-grid">
+          <label for="member-name-input">名前 <span class="required-label">必須</span>
+            <input id="member-name-input" name="name" type="text" autocomplete="off" placeholder="例：青空 ひなた">
+          </label>
+          <label for="member-role-input">役割 <span class="required-label">必須</span>
+            <input id="member-role-input" name="role" type="text" autocomplete="off" placeholder="例：企画サポーター">
+          </label>
+          <label for="member-specialty-input" class="span-2">得意領域
+            <input id="member-specialty-input" name="specialty" type="text" autocomplete="off" placeholder="未入力の場合は「未設定」になります">
+          </label>
+          <label for="member-tags-input" class="span-2">強みタグ（カンマ区切り）
+            <input id="member-tags-input" name="strengthTags" type="text" autocomplete="off" placeholder="課題整理, 巻き込み力, 顧客理解">
+          </label>
+          <label for="member-opportunities-input" class="span-2">おすすめ成長機会（カンマ区切り）
+            <textarea id="member-opportunities-input" name="growthOpportunities" rows="3" placeholder="新規企画のリードに挑戦, 顧客ヒアリング設計を担当"></textarea>
+          </label>
+          <label for="member-trust-input">信頼ポイント
+            <input id="member-trust-input" name="trust" type="number" min="0" step="1" inputmode="numeric" placeholder="0">
+          </label>
+          <label for="member-growth-input">成長期待ポイント
+            <input id="member-growth-input" name="growth" type="number" min="0" step="1" inputmode="numeric" placeholder="0">
+          </label>
+          <label for="member-thanks-input">感謝ポイント
+            <input id="member-thanks-input" name="thanks" type="number" min="0" step="1" inputmode="numeric" placeholder="0">
+          </label>
+          <label for="member-collaboration-input">協働ポイント
+            <input id="member-collaboration-input" name="collaboration" type="number" min="0" step="1" inputmode="numeric" placeholder="0">
+          </label>
+        </div>
+
+        <div class="member-editor-actions">
+          <button type="button" class="secondary-button editor-cancel-button">キャンセル</button>
+          <button type="submit" class="save-member-button">保存する</button>
+        </div>
+      </form>
+    </article>
+  </div>
+
 
   <script src="script.js"></script>
 </body>
