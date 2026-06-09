@@ -110,6 +110,44 @@ const initialTimeline = [
   },
 ];
 
+const growthOpportunities = [
+  {
+    id: "new-service-planning",
+    name: "新規サービス企画リード",
+    category: "企画系",
+    requiredTags: ["アイデア創出", "顧客理解", "巻き込み力"],
+    description: "新しいサービス案を構想し、関係者を巻き込みながら仮説検証を進める機会です。",
+  },
+  {
+    id: "data-improvement",
+    name: "データ活用改善プロジェクト",
+    category: "分析系",
+    requiredTags: ["データ分析", "課題整理", "実行推進"],
+    description: "業務データをもとに課題を可視化し、改善案を提案する機会です。",
+  },
+  {
+    id: "team-onboarding-support",
+    name: "チームオンボーディング支援",
+    category: "支援系",
+    requiredTags: ["チーム支援", "調整力", "信頼形成"],
+    description: "新しく参加したメンバーが早く力を発揮できるように支援する機会です。",
+  },
+  {
+    id: "customer-interview-design",
+    name: "顧客ヒアリング設計",
+    category: "顧客理解系",
+    requiredTags: ["顧客理解", "課題整理", "協働推進"],
+    description: "ユーザーや顧客の声を集め、課題仮説を整理する機会です。",
+  },
+  {
+    id: "junior-mentor",
+    name: "若手メンター担当",
+    category: "支援系",
+    requiredTags: ["チーム支援", "信頼形成", "調整力"],
+    description: "経験の浅いメンバーの相談相手となり、成長を支援する機会です。",
+  },
+];
+
 const dashboardSummary = document.querySelector("#dashboard-summary");
 const dashboardChart = document.querySelector("#dashboard-chart");
 const dashboardComments = document.querySelector("#dashboard-comments");
@@ -117,6 +155,8 @@ const biasAlerts = document.querySelector("#bias-alerts");
 const dashboardSpotlights = document.querySelector("#dashboard-spotlights");
 const portfolioList = document.querySelector("#portfolio-list");
 const memberList = document.querySelector("#member-list");
+const opportunityFilterList = document.querySelector("#opportunity-filter-list");
+const growthOpportunityList = document.querySelector("#growth-opportunity-list");
 const memberSearchInput = document.querySelector("#member-search");
 const memberSortSelect = document.querySelector("#member-sort");
 const tagFilterList = document.querySelector("#tag-filter-list");
@@ -139,6 +179,7 @@ const storageStatus = document.querySelector("#storage-status");
 const storageKey = "growthPointsPrototypeData";
 const storageStatusDefaultText = "ブラウザに保存済み";
 const allTagsLabel = "すべて";
+const opportunityCategories = ["すべて", "企画系", "分析系", "支援系", "顧客理解系"];
 const dashboardPointTypes = ["trust", "growth", "thanks", "collaboration"];
 const biasAlertLevelLabels = { info: "参考情報", caution: "注意", warning: "要確認" };
 const strengthTagFilters = [
@@ -184,6 +225,7 @@ let memberFilters = {
   selectedTag: allTagsLabel,
   sortKey: "score",
 };
+let selectedOpportunityCategory = allTagsLabel;
 let lastFocusedElement = null;
 let activeModalMemberId = null;
 let storageStatusTimer = null;
@@ -443,6 +485,79 @@ function getFilteredAndSortedMembers() {
 
       return calculateScore(second) - calculateScore(first);
     });
+}
+
+function getFilteredGrowthOpportunities() {
+  if (selectedOpportunityCategory === allTagsLabel) {
+    return growthOpportunities;
+  }
+
+  return growthOpportunities.filter((opportunity) => opportunity.category === selectedOpportunityCategory);
+}
+
+function getMatchingReasons(member, opportunity, matchedTags, scoreChange) {
+  const reasons = [];
+
+  if (matchedTags.length > 0) {
+    reasons.push(`必要タグと強みタグ（${matchedTags.join("・")}）が一致しています。`);
+  }
+
+  if (member.points.growth >= 40) {
+    reasons.push("成長期待ポイントが高く、新しい挑戦との相性がよさそうです。");
+  }
+
+  if (member.points.collaboration >= 34 || matchedTags.includes("巻き込み力") || matchedTags.includes("調整力")) {
+    reasons.push("協働ポイントや調整の強みがあり、関係者を巻き込む機会に向いていそうです。");
+  }
+
+  if (scoreChange > 0) {
+    reasons.push("直近のスコアが上昇しており、次の挑戦機会として検討できます。");
+  }
+
+  if (reasons.length === 0) {
+    reasons.push("現在の強みやポイント傾向から、候補として確認できます。");
+  }
+
+  return reasons.slice(0, 2);
+}
+
+function calculateOpportunityMatch(member, opportunity) {
+  const matchedTags = opportunity.requiredTags.filter((tag) => member.strengthTags.includes(tag));
+  const scoreChange = calculateScoreChange(member);
+  const tagScore = matchedTags.length * 22;
+  const growthScore = Math.min(18, Math.round(member.points.growth / 3));
+  const collaborationScore = Math.min(14, Math.round(member.points.collaboration / 4));
+  const changeScore = scoreChange > 0 ? Math.min(10, scoreChange) : 0;
+  const trustBonus = member.points.trust >= 38 ? 6 : 0;
+  const matchRate = Math.min(100, tagScore + growthScore + collaborationScore + changeScore + trustBonus);
+
+  return {
+    member,
+    matchRate,
+    matchedTags,
+    reasons: getMatchingReasons(member, opportunity, matchedTags, scoreChange),
+  };
+}
+
+function getOpportunityMatches(opportunity) {
+  return members
+    .map((member) => calculateOpportunityMatch(member, opportunity))
+    .sort((first, second) => {
+      if (second.matchRate !== first.matchRate) {
+        return second.matchRate - first.matchRate;
+      }
+
+      return calculateScore(second.member) - calculateScore(first.member);
+    });
+}
+
+function getMemberOpportunityMatches(member) {
+  return growthOpportunities
+    .map((opportunity) => ({
+      opportunity,
+      ...calculateOpportunityMatch(member, opportunity),
+    }))
+    .sort((first, second) => second.matchRate - first.matchRate);
 }
 
 function escapeHtml(value) {
@@ -787,6 +902,89 @@ function renderTagFilters() {
     .join("");
 }
 
+function renderOpportunityFilters() {
+  opportunityFilterList.innerHTML = opportunityCategories
+    .map((category) => {
+      const isSelected = selectedOpportunityCategory === category;
+
+      return `
+        <button
+          type="button"
+          class="opportunity-filter-button${isSelected ? " is-active" : ""}"
+          data-category="${escapeHtml(category)}"
+          aria-pressed="${isSelected}"
+        >${escapeHtml(category)}</button>
+      `;
+    })
+    .join("");
+}
+
+function renderOpportunityMatchBadge(matchRate) {
+  return `
+    <div class="match-meter" aria-label="マッチ度 ${matchRate}%">
+      <div class="match-meter-heading">
+        <span>マッチ度</span>
+        <strong>${matchRate}%</strong>
+      </div>
+      <div class="match-meter-bar" aria-hidden="true"><span style="width: ${matchRate}%"></span></div>
+    </div>
+  `;
+}
+
+function renderGrowthOpportunityMatching() {
+  const visibleOpportunities = getFilteredGrowthOpportunities();
+
+  if (visibleOpportunities.length === 0) {
+    growthOpportunityList.innerHTML = `<p class="empty-member-message" role="status">条件に一致する成長機会がありません</p>`;
+    return;
+  }
+
+  growthOpportunityList.innerHTML = visibleOpportunities
+    .map((opportunity) => {
+      const requiredTags = opportunity.requiredTags
+        .map((tag) => `<span class="tag-label">${escapeHtml(tag)}</span>`)
+        .join("");
+      const topMatches = getOpportunityMatches(opportunity).slice(0, 3);
+
+      return `
+        <article class="growth-opportunity-card">
+          <div class="growth-opportunity-header">
+            <span class="category-badge">${escapeHtml(opportunity.category)}</span>
+            <h3>${escapeHtml(opportunity.name)}</h3>
+            <p>${escapeHtml(opportunity.description)}</p>
+          </div>
+          <div class="required-tag-block">
+            <span>必要タグ</span>
+            <div class="tag-list compact">${requiredTags}</div>
+          </div>
+          <div class="recommended-members-block">
+            <h4>おすすめメンバー上位3名</h4>
+            <div class="recommended-member-list" aria-label="${escapeHtml(opportunity.name)}のおすすめメンバー上位3名">
+              ${topMatches
+              .map((match, index) => `
+                <article class="recommended-member-card">
+                  <div class="recommended-member-heading">
+                    <span class="recommend-rank">${index + 1}</span>
+                    <div>
+                      <h4>${escapeHtml(match.member.name)}</h4>
+                      <p>${escapeHtml(match.member.role)}</p>
+                    </div>
+                  </div>
+                  ${renderOpportunityMatchBadge(match.matchRate)}
+                  <ul class="match-reason-list">
+                    ${match.reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join("")}
+                  </ul>
+                </article>
+              `)
+              .join("")}
+            </div>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
 function renderMemberFilterStatus(displayedCount) {
   const searchLabel = memberFilters.searchText ? `検索：${escapeHtml(memberFilters.searchText)}` : "検索：なし";
   const tagLabel = `タグ：${escapeHtml(memberFilters.selectedTag)}`;
@@ -923,10 +1121,23 @@ function renderFeedbackList(feedbackItems) {
 }
 
 function renderGrowthOpportunities(member) {
+  const topMatches = getMemberOpportunityMatches(member).slice(0, 3);
+
   return `
-    <ul class="opportunity-list">
-      ${member.growthOpportunities.map((opportunity) => `<li>${escapeHtml(opportunity)}</li>`).join("")}
-    </ul>
+    <div class="member-opportunity-note">候補として確認できる架空の機会です。面談や育成計画の参考情報として扱ってください。</div>
+    <div class="member-opportunity-match-list">
+      ${topMatches
+        .map((match) => `
+          <article class="member-opportunity-match">
+            <div class="member-opportunity-match-heading">
+              <h4>${escapeHtml(match.opportunity.name)}</h4>
+              <span>${match.matchRate}%</span>
+            </div>
+            <p>${escapeHtml(match.reasons[0])}</p>
+          </article>
+        `)
+        .join("")}
+    </div>
   `;
 }
 
@@ -1439,6 +1650,8 @@ function renderApp() {
   renderDashboard();
   renderPortfolio();
   renderTagFilters();
+  renderOpportunityFilters();
+  renderGrowthOpportunityMatching();
   renderMembers();
   renderTimeline();
 }
@@ -1521,6 +1734,18 @@ tagFilterList.addEventListener("click", (event) => {
   memberFilters.selectedTag = tagButton.dataset.tag;
   renderTagFilters();
   renderMembers();
+});
+
+opportunityFilterList.addEventListener("click", (event) => {
+  const filterButton = event.target.closest(".opportunity-filter-button");
+
+  if (!filterButton) {
+    return;
+  }
+
+  selectedOpportunityCategory = filterButton.dataset.category;
+  renderOpportunityFilters();
+  renderGrowthOpportunityMatching();
 });
 
 resetMemberFiltersButton.addEventListener("click", resetMemberFilters);
