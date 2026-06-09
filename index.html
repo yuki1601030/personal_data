@@ -21,6 +21,7 @@
         <a href="#member-management">メンバー管理</a>
         <a href="#members">メンバー</a>
         <a href="#send-point">応援投資</a>
+        <a href="#my-support-portfolio">自分の応援ポートフォリオ</a>
         <a href="#timeline">タイムライン</a>
         <a href="#members">成長レポート</a>
       </div>
@@ -33,6 +34,12 @@
       <p class="hero-description">
         日々の応援・感謝・期待をポイントとして可視化し、メンバーの成長を明るく後押しするための練習用プロトタイプです。
       </p>
+
+      <div class="operator-panel" aria-label="練習用の操作ユーザー切り替え">
+        <label for="operator-user-select">操作ユーザー</label>
+        <select id="operator-user-select"></select>
+        <p id="operator-user-status" role="status" aria-live="polite">疑似ログインとして、架空メンバーを操作ユーザーにします。</p>
+      </div>
 
       <div class="stats-grid" aria-label="サマリー指標">
         <article class="stat-card">
@@ -251,11 +258,24 @@
       </form>
     </section>
 
+    <section id="my-support-portfolio" class="section-block my-portfolio-section" aria-labelledby="my-support-portfolio-title">
+      <div class="section-heading">
+        <p class="eyebrow">My Support Portfolio</p>
+        <h2 id="my-support-portfolio-title">自分の応援ポートフォリオ</h2>
+        <p>現在の操作ユーザーが、誰にどのような応援投資を送っているかを架空データで可視化します。</p>
+      </div>
+      <div id="my-portfolio-content" class="my-portfolio-content" aria-live="polite"></div>
+    </section>
+
     <section id="timeline" class="section-block">
       <div class="section-heading">
         <p class="eyebrow">Timeline</p>
         <h2>応援投資タイムライン</h2>
-        <p>新しい応援投資ポイントほど上に表示されます。</p>
+        <p>新しい応援投資ポイントほど上に表示されます。操作ユーザーに応じて表示を切り替えられます。</p>
+      </div>
+      <div class="timeline-filter-panel" aria-label="タイムライン表示フィルター">
+        <p class="filter-label">表示範囲</p>
+        <div id="timeline-filter-list" class="timeline-filter-list"></div>
       </div>
       <div id="timeline-list" class="timeline-list" aria-live="polite"></div>
     </section>
