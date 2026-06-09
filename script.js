@@ -113,6 +113,7 @@ const initialTimeline = [
 const dashboardSummary = document.querySelector("#dashboard-summary");
 const dashboardChart = document.querySelector("#dashboard-chart");
 const dashboardComments = document.querySelector("#dashboard-comments");
+const biasAlerts = document.querySelector("#bias-alerts");
 const dashboardSpotlights = document.querySelector("#dashboard-spotlights");
 const portfolioList = document.querySelector("#portfolio-list");
 const memberList = document.querySelector("#member-list");
@@ -139,6 +140,7 @@ const storageKey = "growthPointsPrototypeData";
 const storageStatusDefaultText = "ブラウザに保存済み";
 const allTagsLabel = "すべて";
 const dashboardPointTypes = ["trust", "growth", "thanks", "collaboration"];
+const biasAlertLevelLabels = { info: "参考情報", caution: "注意", warning: "要確認" };
 const strengthTagFilters = [
   allTagsLabel,
   "巻き込み力",
@@ -519,6 +521,127 @@ function renderDashboardChart(dashboardData) {
     .join("");
 }
 
+function getShortReasonCount() {
+  return timeline.filter((item) => item.reason.trim().length < 10).length;
+}
+
+function getDominantPointType(points) {
+  const total = dashboardPointTypes.reduce((sum, type) => sum + points[type], 0);
+
+  if (total === 0) {
+    return null;
+  }
+
+  const topType = dashboardPointTypes.reduce((currentTopType, type) => {
+    if (points[type] > points[currentTopType]) {
+      return type;
+    }
+
+    return currentTopType;
+  }, dashboardPointTypes[0]);
+  const ratio = points[topType] / total;
+
+  return { type: topType, ratio, total };
+}
+
+function createBiasAlert(level, title, message, detail) {
+  return { level, title, message, detail };
+}
+
+function detectBiasAlerts(dashboardData) {
+  const alerts = [];
+  const totalScore = dashboardData.totalScore;
+  const feedbackCount = timeline.length;
+  const averageScore = members.length ? totalScore / members.length : 0;
+
+  if (totalScore > 0) {
+    const topMember = getTopMemberByValue(calculateScore);
+    const topMemberRatio = calculateScore(topMember) / totalScore;
+
+    if (topMemberRatio >= 0.4) {
+      alerts.push(createBiasAlert(
+        "warning",
+        "特定メンバーへの集中",
+        "一部のメンバーにポイントが集中している傾向があります。目立ちにくい貢献も拾えるよう、振り返り対象を広げてみましょう。",
+        `${topMember.name}さんが全体の約${Math.round(topMemberRatio * 100)}%を受け取っています。`,
+      ));
+    }
+  }
+
+  if (feedbackCount === 0 || feedbackCount < members.length) {
+    alerts.push(createBiasAlert(
+      feedbackCount === 0 ? "warning" : "caution",
+      "フィードバック不足",
+      "フィードバック件数がまだ少なめです。判断材料を増やすために、具体的な行動や場面を記録していきましょう。",
+      `現在のフィードバック件数は${formatNumber(feedbackCount)}件、メンバー数は${formatNumber(members.length)}人です。`,
+    ));
+  }
+
+  const dominantPointType = getDominantPointType(dashboardData.pointTotals);
+
+  if (dominantPointType && dominantPointType.ratio >= 0.5) {
+    alerts.push(createBiasAlert(
+      "caution",
+      "ポイント種類の偏り",
+      "特定のポイント種類に偏りが見られます。信頼・成長期待・感謝・協働の複数観点で見ると、より立体的に人材価値を捉えられます。",
+      `${pointLabels[dominantPointType.type]}が全体の約${Math.round(dominantPointType.ratio * 100)}%です。`,
+    ));
+  }
+
+  if (feedbackCount > 0) {
+    const shortReasonCount = getShortReasonCount();
+    const shortReasonRatio = shortReasonCount / feedbackCount;
+
+    if (shortReasonCount >= 2 && shortReasonRatio >= 0.4) {
+      alerts.push(createBiasAlert(
+        shortReasonRatio >= 0.65 ? "caution" : "info",
+        "理由が短すぎるフィードバック",
+        "理由が短いフィードバックが見られます。なぜポイントを送ったのかを具体的に書くと、成長支援に使いやすくなります。",
+        `10文字未満の理由文が${formatNumber(shortReasonCount)}件あります。`,
+      ));
+    }
+  }
+
+  if (members.length >= 2 && averageScore > 0) {
+    const lowScoreMembers = members.filter((member) => calculateScore(member) <= averageScore * 0.72);
+
+    if (lowScoreMembers.length > 0) {
+      alerts.push(createBiasAlert(
+        "caution",
+        "低スコアメンバーの放置",
+        "スコアが相対的に低いメンバーがいます。評価を下げる目的ではなく、接点や成長機会が不足していないかを確認してみましょう。",
+        `${lowScoreMembers.map((member) => `${member.name}さん`).join("・")}は平均より低めの傾向です。`,
+      ));
+    }
+  }
+
+  if (alerts.length === 0) {
+    alerts.push(createBiasAlert(
+      "info",
+      "大きな偏りは未検知",
+      "現時点では大きな偏りは検知されていません。引き続き、具体的なフィードバックを蓄積していきましょう。",
+      "このコメントは簡易チェックにもとづく参考情報です。",
+    ));
+  }
+
+  return alerts;
+}
+
+function renderBiasAlerts(dashboardData) {
+  biasAlerts.innerHTML = detectBiasAlerts(dashboardData)
+    .map((alert) => `
+      <article class="bias-alert-card is-${escapeHtml(alert.level)}">
+        <div class="bias-alert-meta">
+          <span class="bias-alert-level">${escapeHtml(biasAlertLevelLabels[alert.level])}</span>
+          <strong>${escapeHtml(alert.title)}</strong>
+        </div>
+        <p>${escapeHtml(alert.message)}</p>
+        <small>${escapeHtml(alert.detail)}</small>
+      </article>
+    `)
+    .join("");
+}
+
 function getDashboardMainComment(topPointType) {
   const comments = {
     trust: "このチームは、安心して任せられる関係性が強みとして表れている傾向が見られます。",
@@ -620,6 +743,7 @@ function renderDashboard() {
 
   renderDashboardSummary(dashboardData);
   renderDashboardChart(dashboardData);
+  renderBiasAlerts(dashboardData);
   renderDashboardComments(dashboardData);
   renderDashboardSpotlights();
 }
@@ -828,6 +952,41 @@ function getFeedbackSummary(feedbackItems) {
   return `最近は、${pointThemes.join("・")}に関する声が届いています。理由としては「${reasonDigest}」などがあり、日々の関わりの中で具体的な期待や感謝が集まりつつあります。`;
 }
 
+function getMemberBalanceMemo(member) {
+  const feedbackItems = getFeedbackForMember(member.id);
+  const dominantPointType = getDominantPointType(member.points);
+
+  if (feedbackItems.length < 2) {
+    return {
+      level: "caution",
+      message: "このメンバーに関するフィードバックはまだ少なめです。具体的な行動や貢献が蓄積されると、より納得感のある成長レポートになります。",
+    };
+  }
+
+  if (dominantPointType && dominantPointType.ratio >= 0.5) {
+    return {
+      level: "info",
+      message: "一部のポイントが強く表れています。別の観点でのフィードバックも集まると、より多面的に強みを確認できます。",
+    };
+  }
+
+  return {
+    level: "info",
+    message: "複数の観点からポイントが集まっており、比較的バランスよく成長傾向を確認できます。",
+  };
+}
+
+function renderMemberBalanceMemo(member) {
+  const memo = getMemberBalanceMemo(member);
+
+  return `
+    <div class="modal-section balance-memo-section is-${escapeHtml(memo.level)}">
+      <h3>評価バランスのメモ</h3>
+      <p>${escapeHtml(memo.message)}</p>
+    </div>
+  `;
+}
+
 function generateGrowthReport(member) {
   const score = calculateScore(member);
   const scoreChange = calculateScoreChange(member);
@@ -978,6 +1137,8 @@ function renderMemberModal(member) {
 
     ${renderGrowthReport(member)}
 
+    ${renderMemberBalanceMemo(member)}
+
     <div class="modal-section">
       <h3>強みタグ</h3>
       <div class="tag-list">${tags}</div>
@@ -1103,8 +1264,12 @@ form.addEventListener("submit", (event) => {
   saveAppData(true);
   renderApp();
 
-  if (memberModal.classList.contains("is-open") && activeModalMemberId === member.id) {
-    renderMemberModal(member);
+  if (memberModal.classList.contains("is-open") && activeModalMemberId) {
+    const activeMember = getMemberById(activeModalMemberId);
+
+    if (activeMember) {
+      renderMemberModal(activeMember);
+    }
   }
 
   form.reset();
