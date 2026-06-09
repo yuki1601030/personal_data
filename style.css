@@ -162,7 +162,8 @@ h1 {
 .member-card,
 .portfolio-card,
 .point-form,
-.timeline-item {
+.timeline-item,
+.growth-report-card {
   border: 1px solid rgba(219, 234, 254, 0.9);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.96);
@@ -771,7 +772,8 @@ footer p {
   .member-card,
   .portfolio-card,
   .point-form,
-  .timeline-item {
+  .timeline-item,
+  .growth-report-card {
     border-radius: 18px;
   }
 
@@ -1038,6 +1040,78 @@ body.modal-open {
   font-weight: 800;
 }
 
+.growth-report-card {
+  margin-top: 22px;
+  padding: clamp(18px, 3vw, 24px);
+  background: linear-gradient(135deg, #ffffff 0%, #f4f9ff 100%);
+}
+
+.growth-report-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.growth-report-header h3 {
+  margin-bottom: 0;
+  color: var(--navy);
+  font-size: clamp(1.28rem, 3vw, 1.7rem);
+}
+
+.copy-report-area {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.copy-report-button {
+  margin-top: 0;
+  border-radius: 999px;
+  padding: 11px 16px;
+  font-size: 0.9rem;
+}
+
+.copy-report-status {
+  min-height: 1.2em;
+  color: #0f766e;
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.copy-report-status.is-error {
+  color: #64748b;
+}
+
+.growth-report-list {
+  display: grid;
+  gap: 12px;
+}
+
+.growth-report-item {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.42fr) minmax(0, 1fr);
+  gap: 14px;
+  border: 1px solid rgba(219, 234, 254, 0.92);
+  border-radius: 16px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.growth-report-item dt {
+  color: var(--navy);
+  font-weight: 900;
+}
+
+.growth-report-item dd {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.75;
+}
+
+
 @media (max-width: 760px) {
   .modal-member-header,
   .modal-point-grid {
@@ -1047,5 +1121,22 @@ body.modal-open {
   .member-modal-card {
     max-height: 92vh;
     border-radius: 22px;
+  }
+
+  .growth-report-header,
+  .growth-report-item {
+    grid-template-columns: 1fr;
+  }
+
+  .growth-report-header {
+    display: grid;
+  }
+
+  .copy-report-area {
+    justify-items: stretch;
+  }
+
+  .copy-report-button {
+    width: 100%;
   }
 }

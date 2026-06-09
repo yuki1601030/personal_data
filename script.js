@@ -5,6 +5,34 @@ const pointLabels = {
   collaboration: "協働ポイント",
 };
 
+
+const growthReportToneByPoint = {
+  trust: {
+    theme: "安心して任せられる信頼感",
+    strength: "周囲から安心して任せられる存在として認識されている傾向が見られます。",
+    expectation: "引き続き、進行の見通しづくりや判断材料の整理でチームを支えることへの期待が集まっています。",
+    challenge: "信頼を土台に、少し不確実性の高いテーマの初期設計に挑戦すると、さらに成長機会が広がりそうです。",
+  },
+  growth: {
+    theme: "新しい挑戦への期待",
+    strength: "今後の伸びしろや新しい挑戦への期待が集まっている傾向が見られます。",
+    expectation: "新しい視点を持ち込み、未経験のテーマにも前向きに関わることが期待されています。",
+    challenge: "関心のあるテーマで小さなリード役を担うと、期待を具体的な経験に変えやすくなりそうです。",
+  },
+  thanks: {
+    theme: "周囲を支える前向きな貢献",
+    strength: "周囲を支援し、チームに前向きな影響を与えていることがうかがえます。",
+    expectation: "困っているメンバーへの後押しや、場の空気を明るくする関わりへの期待が集まっています。",
+    challenge: "支援した内容をチームの学びとして共有すると、貢献がより広がりやすくなりそうです。",
+  },
+  collaboration: {
+    theme: "また一緒に働きたい協働力",
+    strength: "また一緒に働きたいと思われる協働力が強みとして表れています。",
+    expectation: "多様な意見をつなぎ、メンバー同士が前向きに動き出せる関係づくりへの期待が集まっています。",
+    challenge: "関係者が多いテーマの橋渡し役に挑戦すると、協働の強みがさらに活かされそうです。",
+  },
+};
+
 const initialMembers = [
   {
     id: "aoi-mori",
@@ -582,6 +610,157 @@ function renderGrowthOpportunities(member) {
   `;
 }
 
+function getTopPointType(member) {
+  return Object.keys(pointLabels).reduce((topType, type) => {
+    if (member.points[type] > member.points[topType]) {
+      return type;
+    }
+
+    return topType;
+  }, "trust");
+}
+
+function getScoreChangeMessage(scoreChange) {
+  if (scoreChange > 0) {
+    return "直近ではスコアが上昇しており、周囲からの期待や信頼が高まっています。";
+  }
+
+  if (scoreChange < 0) {
+    return "直近ではスコアがやや落ち着いています。次の挑戦機会や周囲との接点を増やすことで、再び成長変化が見えやすくなりそうです。";
+  }
+
+  return "直近のスコアは安定しており、継続的な貢献が見られます。";
+}
+
+function getFeedbackSummary(feedbackItems) {
+  const recentFeedbackItems = feedbackItems.slice(0, 3);
+
+  if (recentFeedbackItems.length === 0) {
+    return "まだ十分なフィードバックが蓄積されていません。今後のプロジェクトや協働の中で、具体的な声を集めていきましょう。";
+  }
+
+  const pointThemes = [...new Set(recentFeedbackItems.map((item) => pointLabels[item.type].replace("ポイント", "")))];
+  const reasonDigest = recentFeedbackItems
+    .map((item) => item.reason.replace(/[。.!！?？]$/u, ""))
+    .slice(0, 2)
+    .join("、");
+
+  return `最近は、${pointThemes.join("・")}に関する声が届いています。理由としては「${reasonDigest}」などがあり、日々の関わりの中で具体的な期待や感謝が集まりつつあります。`;
+}
+
+function generateGrowthReport(member) {
+  const score = calculateScore(member);
+  const scoreChange = calculateScoreChange(member);
+  const topPointType = getTopPointType(member);
+  const tone = growthReportToneByPoint[topPointType];
+  const feedbackItems = getFeedbackForMember(member.id);
+  const topStrengthTags = member.strengthTags.slice(0, 3).join("・");
+  const nextOpportunity = member.growthOpportunities[0] || "小さな改善テーマのリード";
+  const secondaryOpportunity = member.growthOpportunities[1] || "周囲との協働機会づくり";
+
+  return {
+    title: "成長レポート",
+    currentStrengths: `${tone.strength} 強みタグでは「${topStrengthTags}」が見られ、総合スコアは${formatNumber(score)}ptです。`,
+    expectations: `${tone.expectation} ${pointLabels[topPointType]}が最も高く、${tone.theme}がサンプルデータ上の特徴として表れています。`,
+    nextChallenge: `${nextOpportunity}に挑戦すると、さらに成長機会が広がりそうです。あわせて「${secondaryOpportunity}」も次の一歩として検討できます。`,
+    feedbackSummary: getFeedbackSummary(feedbackItems),
+    comment: `${getScoreChangeMessage(scoreChange)} このレポートは練習用プロトタイプのサンプル文章であり、断定的な評価ではなく、成長を支援するための参考メモとして扱ってください。`,
+  };
+}
+
+function formatGrowthReportText(member, report) {
+  return [
+    `${report.title}：${member.name} さん`,
+    `現在の強み：${report.currentStrengths}`,
+    `周囲から期待されていること：${report.expectations}`,
+    `次に挑戦するとよさそうなこと：${report.nextChallenge}`,
+    `最近のフィードバック要約：${report.feedbackSummary}`,
+    `一言コメント：${report.comment}`,
+  ].join("\n");
+}
+
+function renderGrowthReport(member) {
+  const report = generateGrowthReport(member);
+  const reportItems = [
+    ["現在の強み", report.currentStrengths],
+    ["周囲から期待されていること", report.expectations],
+    ["次に挑戦するとよさそうなこと", report.nextChallenge],
+    ["最近のフィードバック要約", report.feedbackSummary],
+    ["一言コメント", report.comment],
+  ];
+
+  return `
+    <section class="growth-report-card" aria-labelledby="growth-report-title">
+      <div class="growth-report-header">
+        <div>
+          <p class="eyebrow">Sample Growth Memo</p>
+          <h3 id="growth-report-title">${escapeHtml(report.title)}</h3>
+        </div>
+        <div class="copy-report-area">
+          <button type="button" class="copy-report-button" data-member-id="${escapeHtml(member.id)}">レポートをコピー</button>
+          <span class="copy-report-status" role="status" aria-live="polite"></span>
+        </div>
+      </div>
+      <dl class="growth-report-list">
+        ${reportItems
+          .map(([label, text]) => `
+            <div class="growth-report-item">
+              <dt>${escapeHtml(label)}</dt>
+              <dd>${escapeHtml(text)}</dd>
+            </div>
+          `)
+          .join("")}
+      </dl>
+    </section>
+  `;
+}
+
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+    await navigator.clipboard.writeText(text);
+    return true;
+  }
+
+  const helper = document.createElement("textarea");
+  helper.value = text;
+  helper.setAttribute("readonly", "");
+  helper.style.position = "fixed";
+  helper.style.inset = "0 auto auto 0";
+  helper.style.opacity = "0";
+  document.body.appendChild(helper);
+  helper.select();
+
+  let copied = false;
+
+  try {
+    copied = document.execCommand("copy");
+  } catch (error) {
+    copied = false;
+  } finally {
+    document.body.removeChild(helper);
+  }
+
+  return copied;
+}
+
+function setCopyReportStatus(button, message, isSuccess = true) {
+  const status = button.parentElement.querySelector(".copy-report-status");
+
+  if (!status) {
+    return;
+  }
+
+  status.textContent = message;
+  status.classList.toggle("is-error", !isSuccess);
+
+  window.setTimeout(() => {
+    if (status.textContent === message) {
+      status.textContent = "";
+      status.classList.remove("is-error");
+    }
+  }, 2200);
+}
+
 function renderMemberModal(member) {
   const score = calculateScore(member);
   const feedbackItems = getFeedbackForMember(member.id);
@@ -616,6 +795,8 @@ function renderMemberModal(member) {
       <div><span>${pointLabels.thanks}</span><strong>${formatNumber(member.points.thanks)}</strong></div>
       <div><span>${pointLabels.collaboration}</span><strong>${formatNumber(member.points.collaboration)}</strong></div>
     </div>
+
+    ${renderGrowthReport(member)}
 
     <div class="modal-section">
       <h3>強みタグ</h3>
@@ -791,6 +972,32 @@ memberModal.addEventListener("click", (event) => {
   if (event.target === memberModal) {
     closeMemberModal();
   }
+});
+
+memberModal.addEventListener("click", (event) => {
+  const copyButton = event.target.closest(".copy-report-button");
+
+  if (!copyButton) {
+    return;
+  }
+
+  const member = getMemberById(copyButton.dataset.memberId);
+
+  if (!member) {
+    setCopyReportStatus(copyButton, "コピーできませんでした", false);
+    return;
+  }
+
+  const report = generateGrowthReport(member);
+  const reportText = formatGrowthReportText(member, report);
+
+  copyTextToClipboard(reportText)
+    .then((copied) => {
+      setCopyReportStatus(copyButton, copied ? "コピーしました" : "コピー機能を利用できませんでした", copied);
+    })
+    .catch(() => {
+      setCopyReportStatus(copyButton, "コピー機能を利用できませんでした", false);
+    });
 });
 
 document.addEventListener("keydown", (event) => {
